@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.9.12023.133 insiders
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyTopBar", "MyTopBar\MyTopBar.csproj", "{2BAA27A1-5574-4370-9924-11C70C8CDBA7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2BAA27A1-5574-4370-9924-11C70C8CDBA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BAA27A1-5574-4370-9924-11C70C8CDBA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BAA27A1-5574-4370-9924-11C70C8CDBA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BAA27A1-5574-4370-9924-11C70C8CDBA7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {81698014-6F11-4571-85A1-3B8359A4AC6B}
+	EndGlobalSection
+EndGlobal
