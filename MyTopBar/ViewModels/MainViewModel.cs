@@ -37,12 +37,8 @@ namespace MyTopBar.ViewModels
             _powerService = powerService;
             _foregroundWindowService.OnForegroundAppInfoChanged += OnCurrentChanged;
 
-            ClockText = DateTime.Now.ToString("M月d日 hh:mm");
-            _clockTimer.Interval = TimeSpan.FromMinutes(1);
-            _clockTimer.Tick += ((s, e) =>
-            {
-                ClockText = DateTime.Now.ToString("M月d日 hh:mm");
-            });
+            _clockTimer.Tick += OnClockTick;
+            RefreshClock();
             _clockTimer.Start();
         }
 
@@ -115,9 +111,29 @@ namespace MyTopBar.ViewModels
         private void UpdateFrom(ForegroundAppInfo? app)
         {
             CurrentAppName = string.IsNullOrWhiteSpace(app?.DisplayName)
-                ? "桌面"
+                ? "..."
                 : app.DisplayName;
             CurrentWindowTitle = app?.WindowTitle ?? string.Empty;
+        }
+
+        private void OnClockTick(object? sender, EventArgs e)
+        {
+            RefreshClock();
+        }
+
+        private void RefreshClock()
+        {
+            DateTime now = DateTime.Now;
+            ClockText = now.ToString("M月d日 hh:mm");
+
+            DateTime nextMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0).AddMinutes(1);
+            TimeSpan due = nextMinute - now;
+            if (due < TimeSpan.FromMilliseconds(200))
+            {
+                due = TimeSpan.FromMinutes(1);
+            }
+
+            _clockTimer.Interval = due;
         }
 
         public void Dispose()
