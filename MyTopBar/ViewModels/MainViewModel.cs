@@ -12,6 +12,7 @@ namespace MyTopBar.ViewModels
     {
         private readonly IForegroundWindowService _foregroundWindowService;
         private readonly PowerService _powerService;
+        private readonly AudioService _audioService;
 
         private bool _disposed;
 
@@ -24,18 +25,24 @@ namespace MyTopBar.ViewModels
         private string _currentWindowTitle = string.Empty;
 
         [ObservableProperty]
-        private string _welcomeMessage = "Welcome to MyTopBar!";
+        private float _volume;
+
 
         [ObservableProperty]
         private string _clockText = string.Empty;
 
         public MainViewModel(
             IForegroundWindowService foregroundWindowService,
-            PowerService powerService)
+            PowerService powerService,
+            AudioService audioService)
         {
             _foregroundWindowService = foregroundWindowService;
             _powerService = powerService;
+            _audioService = audioService;
             _foregroundWindowService.OnForegroundAppInfoChanged += OnCurrentChanged;
+
+            Volume = _audioService.GetVolume();
+            _audioService.VolumeChanged += OnSystemVolumeChanged;
 
             _clockTimer.Tick += OnClockTick;
             RefreshClock();
@@ -116,6 +123,11 @@ namespace MyTopBar.ViewModels
             CurrentWindowTitle = app?.WindowTitle ?? string.Empty;
         }
 
+        private void OnSystemVolumeChanged(float volume, bool muted)
+        {
+            Volume = volume;
+        }
+
         private void OnClockTick(object? sender, EventArgs e)
         {
             RefreshClock();
@@ -124,7 +136,7 @@ namespace MyTopBar.ViewModels
         private void RefreshClock()
         {
             DateTime now = DateTime.Now;
-            ClockText = now.ToString("M月d日 hh:mm");
+            ClockText = now.ToString("ddd M月d日 HH:mm");
 
             DateTime nextMinute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0).AddMinutes(1);
             TimeSpan due = nextMinute - now;
@@ -145,6 +157,7 @@ namespace MyTopBar.ViewModels
 
             _clockTimer.Stop();
 
+            _audioService.VolumeChanged -= OnSystemVolumeChanged;
             _foregroundWindowService.OnForegroundAppInfoChanged -= OnCurrentChanged;
             _foregroundWindowService.Stop();
             _disposed = true;

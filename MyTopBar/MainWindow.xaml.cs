@@ -11,6 +11,7 @@ namespace MyTopBar
         private readonly MainViewModel _viewModel;
         private readonly PopupHost _appleMenu;
         private readonly PopupHost _clockMenu;
+        private readonly PopupHost _audioMenu;
 
         public MainWindow()
         {
@@ -22,6 +23,7 @@ namespace MyTopBar
             _appBarController = new AppBarController(this, AppBarController.AppBarEdge.Top, 28);
             _appleMenu = new PopupHost(AppleMenuPopup);
             _clockMenu = new PopupHost(ClockPopup);
+           _audioMenu = new PopupHost(AudioPopup);
 
             Loaded += OnLoaded;
             Closed += OnClosed;
@@ -47,6 +49,11 @@ namespace MyTopBar
         private void ClockButton_Click(object sender, RoutedEventArgs e)
         {
             _clockMenu.Toggle();
+        }
+
+        private void AudioButton_Click(object sender, RoutedEventArgs e)
+        {
+            _audioMenu.Toggle();
         }
     }
 }

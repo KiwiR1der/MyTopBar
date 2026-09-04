@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:MyTopBar"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:MyTopBar.Views"
         Title="MainWindow"
         Height="28"
         Background="#F2F2F2"
@@ -106,14 +107,51 @@
 
             </StackPanel>
 
-            <TextBlock Grid.Column="1"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Text="{Binding WelcomeMessage}" />
-
             <StackPanel Grid.Column="2"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
+
+                <Button x:Name="AudioButton" Style="{StaticResource AppleMenuButton}" Click="AudioButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="14"
+                              Height="14"
+                              Data="{StaticResource Volume}"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              RenderTransformOrigin="0.5,0.5"
+                              SnapsToDevicePixels="True"
+                              Stretch="Uniform" />
+                        <TextBlock Margin="4,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding Volume, StringFormat={}{0:P0}}" />
+                    </StackPanel>
+                </Button>
+
+                <Popup x:Name="AudioPopup"
+                       AllowsTransparency="True"
+                       HorizontalOffset="-4"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding ElementName=AudioButton}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False"
+                       VerticalOffset="6">
+                    <Border MinWidth="248"
+                            Padding="10,8"
+                            Background="#F7F7F7"
+                            BorderBrush="#33000000"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="10">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="16"
+                                              Direction="270"
+                                              Opacity="0.28"
+                                              ShadowDepth="6"
+                                              Color="#000000" />
+                        </Border.Effect>
+                        <views:AudioPopupView />
+                    </Border>
+                </Popup>
+
                 <Button x:Name="ClockButton"
                         Click="ClockButton_Click"
                         Style="{StaticResource AppleMenuButton}">
@@ -131,11 +169,12 @@
                        PopupAnimation="Fade"
                        StaysOpen="False"
                        VerticalOffset="6">
-                    <Border Width="220"
-                            Padding="6,4"
+                    <Border MinWidth="248"
+                            Padding="10,8"
                             Background="#F7F7F7"
                             BorderBrush="#33000000"
                             BorderThickness="1"
+                            ClipToBounds="False"
                             CornerRadius="10">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="16"
@@ -144,7 +183,7 @@
                                               ShadowDepth="6"
                                               Color="#000000" />
                         </Border.Effect>
-                        <Calendar />
+                        <views:CalendarPopup />
                     </Border>
                 </Popup>
 

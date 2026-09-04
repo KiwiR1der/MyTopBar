@@ -1,10 +1,9 @@
-﻿using System.Windows;
-using System.Windows.Media;
-using System.Windows.Threading;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Interfaces;
 using MyTopBar.Services;
 using MyTopBar.ViewModels;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace MyTopBar
 {
@@ -26,7 +25,11 @@ namespace MyTopBar
             services.AddSingleton(Dispatcher.CurrentDispatcher);
             services.AddSingleton<IForegroundWindowService, ForegroundWindowService>();
             services.AddSingleton<PowerService>();
+            services.AddSingleton<AudioService>();
+
             services.AddTransient<MainViewModel>();
+            services.AddTransient<CalendarPopupViewModel>();
+            services.AddTransient<AudioPopupViewModel>();
 
             return services.BuildServiceProvider();
         }

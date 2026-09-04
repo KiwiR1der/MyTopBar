@@ -1,12 +1,105 @@
 ﻿<UserControl x:Class="MyTopBar.Views.CalendarPopup"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:MyTopBar.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-            
-    </Grid>
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <StackPanel>
+        <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock VerticalAlignment="Center"
+                       FontFamily="{StaticResource AppFontMedium}"
+                       FontSize="14"
+                       Foreground="#1D1D1F"
+                       Text="{Binding CurrentMonth, StringFormat={}{0:yyyy年M月}}" />
+
+            <Button Grid.Column="1"
+                    Command="{Binding PreviousMonthCommand}"
+                    Content="‹"
+                    FontSize="16"
+                    Style="{StaticResource AppleMenuButton}" />
+            <Button Grid.Column="2"
+                    Command="{Binding NextMonthCommand}"
+                    Content="›"
+                    FontSize="16"
+                    Style="{StaticResource AppleMenuButton}" />
+        </Grid>
+
+        <UniformGrid Margin="0,0,0,8" Columns="7">
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="一" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="二" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="三" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="四" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="五" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="六" />
+            <TextBlock HorizontalAlignment="Center"
+                       Foreground="#80000000"
+                       Text="日" />
+        </UniformGrid>
+
+        <ItemsControl ItemsSource="{Binding Days}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="7" Rows="6" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Width="28"
+                            Height="28"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            CornerRadius="14">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                        <Setter Property="Background" Value="#0A84FF" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Text="{Binding Day}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#1D1D1F" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCurrentMonth}" Value="False">
+                                            <Setter Property="Foreground" Value="#80000000" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
 </UserControl>
