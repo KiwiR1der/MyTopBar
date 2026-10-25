@@ -4,12 +4,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:MyTopBar"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:fluent="https://github.com/TwilightLemon/FluentWpfCore"
         xmlns:views="clr-namespace:MyTopBar.Views"
-        Title="MainWindow"
-        Height="28"
-        Background="#F2F2F2"
+        Title="MyTopBar"
+        Height="30"
+        AllowsTransparency="False"
+        Background="Transparent"
         FontFamily="{StaticResource AppFont}"
-        RenderOptions.ClearTypeHint="Enabled"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         SnapsToDevicePixels="True"
@@ -19,16 +20,27 @@
         UseLayoutRounding="True"
         WindowStyle="None"
         mc:Ignorable="d">
-    <Border Background="#F2F2F2" BorderBrush="#33000000">
 
-        <Grid Margin="12,0" ShowGridLines="False">
+    <!--  材质由 DWM 提供，本层必须完全透明，否则会遮住 Mica/Acrylic  -->
+    <!--  材质交由 FluentWpfCore 管理（Acrylic / Mica / MicaAlt），可在运行时切换  -->
+    <fluent:WindowMaterial.Material>
+        <fluent:WindowMaterial x:Name="WindowMaterialConfig"
+                               CompositonColor="#4DF2F2F2"
+                               IsDarkMode="False"
+                               MaterialMode="Acrylic"
+                               UseWindowComposition="True" />
+    </fluent:WindowMaterial.Material>
+
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <Grid Margin="12,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+            <!--  左区：Apple 菜单 + 当前活动应用  -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Orientation="Horizontal">
                 <Button x:Name="AppleButton"
                         Click="AppleButton_Click"
                         Style="{StaticResource AppleMenuButton}">
@@ -46,17 +58,9 @@
                 </Button>
 
                 <TextBlock Margin="2,0,0,0"
-                           VerticalAlignment="Center"
-                           FontFamily="{StaticResource AppFontMedium}"
-                           FontSize="13"
-                           FontWeight="Normal"
-                           Foreground="#1D1D1F"
-                           RenderOptions.ClearTypeHint="Enabled"
+                           MaxWidth="240"
+                           Style="{StaticResource BarText}"
                            Text="{Binding CurrentAppName}"
-                           TextOptions.TextFormattingMode="Ideal"
-                           TextOptions.TextRenderingMode="ClearType"
-                           TextTrimming="CharacterEllipsis"
-                           TextWrapping="NoWrap"
                            ToolTip="{Binding CurrentWindowTitle}" />
 
                 <Popup x:Name="AppleMenuPopup"
@@ -87,6 +91,9 @@
                             <Button Command="{Binding OpenSettingsCommand}"
                                     Content="系统设置"
                                     Style="{StaticResource AppleMenuItem}" />
+                            <Button Command="{Binding OpenBarSettingsCommand}"
+                                    Content="MyTopBar 设置…"
+                                    Style="{StaticResource AppleMenuItem}" />
                             <Separator Style="{StaticResource AppleMenuSeparator}" />
                             <Button Command="{Binding SleepCommand}"
                                     Content="睡眠"
@@ -104,14 +111,84 @@
                         </StackPanel>
                     </Border>
                 </Popup>
-
             </StackPanel>
 
-            <StackPanel Grid.Column="2"
+            <!--  中区：歌词 / 天气 / 时钟 / 文本  -->
+            <StackPanel x:Name="CenterPanel"
+                        Grid.Column="1"
+                        HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
+                <ItemsControl x:Name="CenterItems"
+                              ItemTemplateSelector="{x:Null}"
+                              ItemsSource="{Binding CenterWidgets}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Margin" Value="9,0" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
 
-                <Button x:Name="AudioButton" Style="{StaticResource AppleMenuButton}" Click="AudioButton_Click">
+                <Popup x:Name="ClockPopup"
+                       AllowsTransparency="True"
+                       HorizontalOffset="-4"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding ElementName=CenterPanel}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False"
+                       VerticalOffset="6">
+                    <Border MinWidth="248"
+                            Padding="10,8"
+                            Background="#F7F7F7"
+                            BorderBrush="#33000000"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="10">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="16"
+                                              Direction="270"
+                                              Opacity="0.28"
+                                              ShadowDepth="6"
+                                              Color="#000000" />
+                        </Border.Effect>
+                        <views:CalendarPopup />
+                    </Border>
+                </Popup>
+            </StackPanel>
+
+            <!--  右区：音量 + CPU / 内存 / 网络  -->
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Separator Grid.Column="0" Style="{StaticResource AppleMenuSeparator}" />
+                    <ItemsControl x:Name="RightItems" Grid.Column="1" ItemsSource="{Binding RightWidgets}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Margin" Value="9,0" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                    </ItemsControl>
+                </Grid>
+
+                <!--  音量在最右侧（最外），网络等指标在其内侧  -->
+                <Button x:Name="AudioButton"
+                        Click="AudioButton_Click"
+                        Style="{StaticResource AppleMenuButton}">
                     <StackPanel Orientation="Horizontal">
                         <Path Width="14"
                               Height="14"
@@ -121,7 +198,7 @@
                               SnapsToDevicePixels="True"
                               Stretch="Uniform" />
                         <TextBlock Margin="4,0,0,0"
-                                   VerticalAlignment="Center"
+                                   Style="{StaticResource BarSecondaryText}"
                                    Text="{Binding Volume, StringFormat={}{0:P0}}" />
                     </StackPanel>
                 </Button>
@@ -151,45 +228,7 @@
                         <views:AudioPopupView />
                     </Border>
                 </Popup>
-
-                <Button x:Name="ClockButton"
-                        Click="ClockButton_Click"
-                        Style="{StaticResource AppleMenuButton}">
-                    <TextBlock HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               FontFamily="{StaticResource AppFontMedium}"
-                               Text="{Binding ClockText}" />
-                </Button>
-
-                <Popup x:Name="ClockPopup"
-                       AllowsTransparency="True"
-                       HorizontalOffset="-4"
-                       Placement="Bottom"
-                       PlacementTarget="{Binding ElementName=ClockButton}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False"
-                       VerticalOffset="6">
-                    <Border MinWidth="248"
-                            Padding="10,8"
-                            Background="#F7F7F7"
-                            BorderBrush="#33000000"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="10">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="16"
-                                              Direction="270"
-                                              Opacity="0.28"
-                                              ShadowDepth="6"
-                                              Color="#000000" />
-                        </Border.Effect>
-                        <views:CalendarPopup />
-                    </Border>
-                </Popup>
-
             </StackPanel>
         </Grid>
-
-    </Border>
-
+    </Grid>
 </Window>

@@ -1,0 +1,85 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:widgets="clr-namespace:MyTopBar.Widgets">
+
+    <!--  顶栏内所有组件共用的文字样式  -->
+    <Style x:Key="BarText" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
+    </Style>
+
+    <Style x:Key="BarSecondaryText" BasedOn="{StaticResource BarText}" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource BarSecondaryForegroundBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <!--  组件之间的细分隔线  -->
+    <Style x:Key="WidgetSeparator" TargetType="Border">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Height" Value="11" />
+        <Setter Property="Margin" Value="9,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource BarSeparatorBrush}" />
+    </Style>
+
+    <!--  中区：时钟  -->
+    <DataTemplate DataType="{x:Type widgets:ClockWidgetViewModel}">
+        <TextBlock Style="{StaticResource BarText}" Text="{Binding ClockText}" />
+    </DataTemplate>
+
+    <!--  中区：歌词  -->
+    <DataTemplate DataType="{x:Type widgets:LyricsWidgetViewModel}">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock MaxWidth="320"
+                       Style="{StaticResource BarText}"
+                       Text="{Binding Text}" />
+            <TextBlock Margin="8,0,0,0"
+                       Style="{StaticResource BarSecondaryText}"
+                       Text="{Binding NextText}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <!--  中区：天气  -->
+    <DataTemplate DataType="{x:Type widgets:WeatherWidgetViewModel}">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Style="{StaticResource BarText}" Text="{Binding Icon}" />
+            <TextBlock Margin="4,0,0,0" Style="{StaticResource BarText}" Text="{Binding Text}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <!--  中区：文本 / 一言  -->
+    <DataTemplate DataType="{x:Type widgets:TextWidgetViewModel}">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock MaxWidth="420"
+                       Style="{StaticResource BarText}"
+                       Text="{Binding Text}"
+                       ToolTip="{Binding Source}" />
+        </StackPanel>
+    </DataTemplate>
+
+    <!--  右区：CPU / 内存 / 网络  -->
+    <DataTemplate DataType="{x:Type widgets:CpuWidgetViewModel}">
+        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:MemoryWidgetViewModel}">
+        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:NetworkWidgetViewModel}">
+        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+    </DataTemplate>
+
+    <!--  每个组件统一的外边距  -->
+    <Style x:Key="WidgetItem" TargetType="ContentPresenter">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+
+</ResourceDictionary>
