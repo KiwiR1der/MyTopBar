@@ -171,17 +171,18 @@ namespace MyTopBar.Widgets
             try
             {
                 LrcResult? result = await FetchLrcAsync(info.Title, info.Artist).ConfigureAwait(false);
-                if (result is null)
+                // 查不到（含搜索无结果）统一按 null 处理，避免 default(LrcResult) 这种"非 null 但为空"的坑。
+                if (result is null || result.Value.IsEmpty)
                 {
                     _ = _dispatcher.BeginInvoke(() =>
                     {
                         _lines = Array.Empty<LyricLine>();
-                        Text = info.Title;
+                        _lastIndex = -1;
+                        Text = CleanTitle(info.Title);
                         NextText = string.Empty;
                     });
                     return;
                 }
-
                 LrcResult payload = result.Value;
                 IReadOnlyList<LyricLine> parsed = payload.IsSynced
                     ? LrcParser.Parse(payload.Lrc)
@@ -329,6 +330,28 @@ namespace MyTopBar.Widgets
                 }
 
                 t = t.Substring(1, t.Length - 2).Trim();
+            }
+
+            // 去掉结尾的版本标记，例如 "写给黄淮 (Live)" / "Song - Remastered"。
+            // 这类后缀会让 LRCLIB 精确匹配失败。
+            string[] suffixes =
+            [
+                " (Live)", "(Live)", " [Live]", "[Live]",
+                " (live)", "(live)", " - Live", "- Live",
+                " (Remastered)", "(Remastered)", " - Remastered", "- Remastered",
+                " (Acoustic)", "(Acoustic)", " (伴奏)", "(伴奏)"
+            ];
+            foreach (string suffix in suffixes)
+            {
+                if (t.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string trimmed = t.Substring(0, t.Length - suffix.Length).Trim();
+                    if (trimmed.Length > 0)
+                    {
+                        t = trimmed;
+                        break;
+                    }
+                }
             }
 
             return t.Length == 0 ? title.Trim() : t;
