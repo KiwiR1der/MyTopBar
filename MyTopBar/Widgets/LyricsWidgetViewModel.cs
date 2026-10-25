@@ -150,8 +150,8 @@ namespace MyTopBar.Widgets
         {
             try
             {
-                string? lrc = await FetchLrcAsync(info.Title, info.Artist).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(lrc))
+                LrcResult? result = await FetchLrcAsync(info.Title, info.Artist).ConfigureAwait(false);
+                if (result is null)
                 {
                     _ = _dispatcher.BeginInvoke(() =>
                     {
@@ -162,67 +162,181 @@ namespace MyTopBar.Widgets
                     return;
                 }
 
-                IReadOnlyList<LyricLine> parsed = LrcParser.Parse(lrc);
+                LrcResult payload = result.Value;
+
+                // 带时间轴才滚动；纯文本只做静态展示。
+                IReadOnlyList<LyricLine> parsed = payload.IsSynced
+                    ? LrcParser.Parse(payload.Lrc)
+                    : Array.Empty<LyricLine>();
+
                 _ = _dispatcher.BeginInvoke(() =>
                 {
                     _lines = parsed;
                     _lastIndex = -1;
                     if (parsed.Count == 0)
                     {
-                        Text = info.Title;
+                        // 无时间轴：显示纯文本首行，至少让用户看到歌词存在。
+                        Text = FirstLine(payload.Lrc, info.Title);
+                        NextText = string.Empty;
                     }
                 });
             }
             catch
             {
-                // 断网或接口异常时保留曲名，不打断顶栏。
                 _ = _dispatcher.BeginInvoke(() => Text = info.Title);
             }
         }
 
-        private static async Task<string?> FetchLrcAsync(string title, string artist)
+        /// <summary>
+        /// 查询歌词。优先带时间轴（syncedLyrics），取不到时退回纯文本（plainLyrics）。
+        /// </summary>
+        private static async Task<LrcResult> FetchLrcAsync(string rawTitle, string artist)
         {
-            string url = "https://lrclib.net/api/get"
+            // 不少播放器会把曲名包成 "[Sunrise]"、"《Sunrise》"、"(Sunrise)" 这类形式，
+            // 直接拿去精确匹配会失败，先清洗一遍。
+            string title = CleanTitle(rawTitle);
+
+            // 1) 精确匹配
+            string getUrl = "https://lrclib.net/api/get"
                 + "?track_name=" + Uri.EscapeDataString(title)
                 + "&artist_name=" + Uri.EscapeDataString(artist);
-            try
+            LrcResult? exact = await TryReadAsync(getUrl).ConfigureAwait(false);
+            if (exact is { IsEmpty: false })
             {
-                string json = await Http.GetStringAsync(url).ConfigureAwait(false);
-                using JsonDocument doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("syncedLyrics", out JsonElement synced)
-                    && synced.ValueKind == JsonValueKind.String)
-                {
-                    return synced.GetString();
-                }
-            }
-            catch
-            {
-                // 精确匹配失败后走搜索接口。
+                return exact.Value;
             }
 
+            // 2) 搜索匹配：优先带时间轴的条目
             string searchUrl = $"https://lrclib.net/api/search?q={Uri.EscapeDataString(title + " " + artist)}";
             try
             {
                 string json = await Http.GetStringAsync(searchUrl).ConfigureAwait(false);
                 using JsonDocument doc = JsonDocument.Parse(json);
-                if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                if (doc.RootElement.ValueKind != JsonValueKind.Array)
                 {
-                    foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                    return default;
+                }
+
+                LrcResult plainFallback = default;
+                foreach (JsonElement item in doc.RootElement.EnumerateArray())
+                {
+                    LrcResult r = ReadItem(item);
+                    if (!r.IsEmpty && r.IsSynced)
                     {
-                        if (item.TryGetProperty("syncedLyrics", out JsonElement synced)
-                            && synced.ValueKind == JsonValueKind.String)
-                        {
-                            return synced.GetString();
-                        }
+                        return r;
+                    }
+
+                    if (!r.IsEmpty && plainFallback.IsEmpty)
+                    {
+                        plainFallback = r;
                     }
                 }
+
+                return plainFallback;
             }
             catch
             {
-                // 忽略，交由调用方显示曲名。
+                return default;
+            }
+        }
+
+        private static async Task<LrcResult?> TryReadAsync(string url)
+        {
+            try
+            {
+                string json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(json);
+                return ReadItem(doc.RootElement);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static LrcResult ReadItem(JsonElement item)
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                return default;
             }
 
-            return null;
+            if (item.TryGetProperty("syncedLyrics", out JsonElement synced)
+                && synced.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(synced.GetString()))
+            {
+                return new LrcResult(synced.GetString()!, true);
+            }
+
+            if (item.TryGetProperty("plainLyrics", out JsonElement plain)
+                && plain.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(plain.GetString()))
+            {
+                return new LrcResult(plain.GetString()!, false);
+            }
+
+            return default;
+        }
+
+        /// <summary>去掉播放器加在曲名外层的括号、空白等修饰。</summary>
+        private static string CleanTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
+            string t = title.Trim();
+
+            // 反复剥离成对的包裹符，例如 "[Sunrise]" -> "Sunrise"
+            while (t.Length >= 2)
+            {
+                char first = t[0];
+                char last = t[^1];
+                bool paired =
+                    (first == '[' && last == ']') ||
+                    (first == '(' && last == ')') ||
+                    (first == '《' && last == '》') ||
+                    (first == '【' && last == '】') ||
+                    (first == '"' && last == '"') ||
+                    (first == '\'' && last == '\'');
+
+                if (!paired)
+                {
+                    break;
+                }
+
+                t = t[1..^1].Trim();
+                t = t[1..^1].Trim();
+            }
+
+            return t.Length == 0 ? title.Trim() : t;
+        }
+
+        /// <summary>取纯文本歌词的首个非空行，用于无时间轴时的静态展示。</summary>
+        private static string FirstLine(string? plain, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(plain))
+            {
+                return fallback;
+            }
+
+            foreach (string line in plain.Split('\n'))
+            {
+                string trimmed = line.Trim();
+                if (trimmed.Length > 0)
+                {
+                    return trimmed;
+                }
+            }
+
+            return fallback;
+        }
+
+        /// <summary>歌词查询结果：内容 + 是否带时间轴。</summary>
+        private readonly record struct LrcResult(string Lrc, bool IsSynced)
+        {
+            public bool IsEmpty => string.IsNullOrWhiteSpace(Lrc);
         }
 
         protected override void DisposeCore()

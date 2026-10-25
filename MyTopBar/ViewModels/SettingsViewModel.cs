@@ -152,8 +152,13 @@ namespace MyTopBar.ViewModels
     {
         private readonly Action<string, bool> _onChanged;
 
+        /// <summary>
+        /// 用 bool? 承接 CheckBox.IsChecked（它是 bool?）。
+        /// 若用 bool 绑定，取消勾选时 WPF 会传 null，属性可能不更新，
+        /// 导致界面显示已关闭但配置里仍是 true —— 这正是组件开关错乱的成因。
+        /// </summary>
         [ObservableProperty]
-        private bool _isEnabled;
+        private bool? _isEnabled;
 
         public string Id { get; }
         public string DisplayName { get; }
@@ -166,6 +171,10 @@ namespace MyTopBar.ViewModels
             _onChanged = onChanged;
         }
 
-        partial void OnIsEnabledChanged(bool value) => _onChanged(Id, value);
+        partial void OnIsEnabledChanged(bool? value)
+        {
+            // null 视为未勾选，避免把 null 写入配置。
+            _onChanged(Id, value ?? false);
+        }
     }
 }
