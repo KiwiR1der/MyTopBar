@@ -17,11 +17,10 @@ namespace MyTopBar.Widgets
 
         public override string DisplayName => "时钟";
 
-        public override WidgetZone DefaultZone => WidgetZone.Center;
 
         public override double MinWidth => 60;
 
-        /// <summary>是否显示星期。</summary>
+        public override WidgetZone DefaultZone => WidgetZone.Right;
         public bool ShowWeekday { get; set; } = true;
 
         /// <summary>是否使用 24 小时制。</summary>

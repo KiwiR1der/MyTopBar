@@ -59,6 +59,13 @@ namespace MyTopBar.Widgets
         public bool HideWhenIdle { get; set; } = true;
 
         /// <summary>
+        /// 当前是否有活跃的媒体会话。中区据此在「歌词」与「一言」间互斥切换：
+        /// 有播放显示歌词，无播放显示一言，二者不同时出现。
+        /// </summary>
+        [ObservableProperty]
+        private bool _hasActiveMedia;
+
+        /// <summary>
         /// 按当前播放位置定位歌词行并刷新文本。
         /// force=true 时即使行号没变也强制刷新，用于切歌后立即出词。
         private void OnTick(object? sender, EventArgs e) => RefreshFromClock(force: false);
@@ -137,10 +144,13 @@ namespace MyTopBar.Widgets
                 _lines = Array.Empty<LyricLine>();
                 _loadedKey = string.Empty;
                 _lastIndex = -1;
+                HasActiveMedia = false;
                 Text = HideWhenIdle ? string.Empty : "无播放";
                 NextText = string.Empty;
                 return;
             }
+
+            HasActiveMedia = true;
 
             MediaTrackInfo info = track.Value;
             _basePosition = info.Position;

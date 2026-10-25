@@ -22,6 +22,8 @@ namespace MyTopBar.ViewModels
         private readonly SystemMetricsService _metrics;
         private readonly WidgetRegistry _registry;
 
+        private readonly LyricsWidgetViewModel _lyrics;
+        private readonly TextWidgetViewModel _text;
         private bool _disposed;
 
         [ObservableProperty]
@@ -38,8 +40,11 @@ namespace MyTopBar.ViewModels
 
         [ObservableProperty]
         private string _materialStatus = string.Empty;
-        /// <summary>中区组件集合。</summary>
-        public ObservableCollection<WidgetViewModelBase> CenterWidgets => _registry.Center;
+        /// <summary>
+        /// 中区实际渲染的组件集合。中区同一时刻最多一个组件：
+        /// 有媒体播放时显示歌词，否则显示文本/一言，二者互斥。
+        /// </summary>
+        public ObservableCollection<WidgetViewModelBase> CenterWidgets { get; } = new();
 
         /// <summary>右区组件集合。</summary>
         public ObservableCollection<WidgetViewModelBase> RightWidgets => _registry.Right;
@@ -69,18 +74,58 @@ namespace MyTopBar.ViewModels
             _registry = registry;
             Settings = settings.Current;
 
-            // 中区默认顺序：歌词 → 天气 → 时钟 → 文本（与计划一致）
+            // 中区只保留「歌词 / 文本」，二者互斥（同一时刻只显示一个，见 CenterWidgets 计算）
             _registry.Add(lyrics);
-            _registry.Add(weather);
-            _registry.Add(clock);
             _registry.Add(text);
+
+            // 右区默认顺序：网络 → CPU → 内存 → 天气 → 时钟（音量按钮固定在右区最右，见 XAML）
+            _registry.Add(network);
             _registry.Add(cpu);
             _registry.Add(memory);
-            _registry.Add(network);
+            _registry.Add(weather);
+            _registry.Add(clock);
+
+            _lyrics = lyrics;
+            _text = text;
+            _lyrics.PropertyChanged += OnLyricsPropertyChanged;
 
             _foregroundWindowService.OnForegroundAppInfoChanged += OnCurrentChanged;
             Volume = _audioService.GetVolume();
             _audioService.VolumeChanged += OnSystemVolumeChanged;
+        }
+
+        /// <summary>歌词组件的播放状态变化时，重新决定中区显示哪一个。</summary>
+        private void OnLyricsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(LyricsWidgetViewModel.HasActiveMedia))
+            {
+                RefreshCenterWidget();
+            }
+        }
+
+        /// <summary>
+        /// 中区互斥：有音乐播歌词，无音乐显一言/文本。两者不会同时出现在顶栏上。
+        /// </summary>
+        private void RefreshCenterWidget()
+        {
+            WidgetViewModelBase? target = _lyrics.HasActiveMedia ? _lyrics : _text;
+
+            // 组件被用户在设置里关掉时中区留空，不强行回退。
+            if (!target.IsEnabled)
+            {
+                target = null;
+            }
+
+            if (CenterWidgets.Count == 1 && ReferenceEquals(CenterWidgets[0], target))
+            {
+                return;
+            }
+
+            CenterWidgets.Clear();
+            if (target is not null)
+            {
+                CenterWidgets.Add(target);
+            }
         }
 
         [RelayCommand]
@@ -181,6 +226,8 @@ namespace MyTopBar.ViewModels
             {
                 StartWidget(widget);
             }
+
+            RefreshCenterWidget();
         }
 
         /// <summary>按配置重新装配组件。</summary>
@@ -196,6 +243,8 @@ namespace MyTopBar.ViewModels
             {
                 StartWidget(widget);
             }
+
+            RefreshCenterWidget();
         }
 
         private void StartWidget(WidgetViewModelBase widget)

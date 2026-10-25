@@ -30,7 +30,10 @@
 
     <!--  中区：时钟  -->
     <DataTemplate DataType="{x:Type widgets:ClockWidgetViewModel}">
-        <TextBlock Style="{StaticResource BarText}" Text="{Binding ClockText}" />
+        <TextBlock Cursor="Hand"
+                   Style="{StaticResource BarText}"
+                   Text="{Binding ClockText}"
+                   ToolTip="点击查看日历" />
     </DataTemplate>
 
     <!--  中区：歌词  -->

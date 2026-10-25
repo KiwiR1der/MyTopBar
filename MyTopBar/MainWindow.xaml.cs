@@ -177,7 +177,14 @@ namespace MyTopBar
 
         private void AppleButton_Click(object sender, RoutedEventArgs e) => _appleMenu.Toggle();
 
-        private void ClockButton_Click(object sender, RoutedEventArgs e) => _clockMenu.Toggle();
+        /// <summary>点击右区时钟区域弹出日历；点到其他组件则忽略。</summary>
+        private void OnRightItemsClick(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ClockWidgetViewModel)
+            {
+                _clockMenu.Toggle();
+            }
+        }
 
         private void AudioButton_Click(object sender, RoutedEventArgs e) => _audioMenu.Toggle();
 

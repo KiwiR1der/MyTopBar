@@ -24,7 +24,7 @@ namespace MyTopBar.Widgets
 
         public override string DisplayName => "天气";
 
-        public override WidgetZone DefaultZone => WidgetZone.Center;
+        public override WidgetZone DefaultZone => WidgetZone.Right;
 
         public override double MinWidth => 72;
 

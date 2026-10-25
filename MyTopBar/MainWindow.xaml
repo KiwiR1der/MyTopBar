@@ -34,9 +34,10 @@
     <Grid x:Name="RootGrid" Background="Transparent">
         <Grid Margin="12,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <!--  左右两侧固定宽度，中区占剩余空间并居中  -->
+                <ColumnDefinition Width="320" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="320" />
             </Grid.ColumnDefinitions>
 
             <!--  左区：Apple 菜单 + 当前活动应用  -->
@@ -135,11 +136,37 @@
                     </ItemsControl.ItemContainerStyle>
                 </ItemsControl>
 
+            </StackPanel>
+
+            <!--  右区：音量 + CPU / 内存 / 网络  -->
+            <StackPanel x:Name="RightPanel" Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Separator Grid.Column="0" Style="{StaticResource AppleMenuSeparator}" />
+                    <ItemsControl x:Name="RightItems" Grid.Column="1" ItemsSource="{Binding RightWidgets}" MouseLeftButtonUp="OnRightItemsClick">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Margin" Value="9,0" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                    </ItemsControl>
+                </Grid>
+
+                <!--  时钟日历弹窗：锚定右区面板，点击时钟区域弹出  -->
                 <Popup x:Name="ClockPopup"
                        AllowsTransparency="True"
                        HorizontalOffset="-4"
                        Placement="Bottom"
-                       PlacementTarget="{Binding ElementName=CenterPanel}"
+                       PlacementTarget="{Binding ElementName=RightPanel}"
                        PopupAnimation="Fade"
                        StaysOpen="False"
                        VerticalOffset="6">
@@ -160,30 +187,6 @@
                         <views:CalendarPopup />
                     </Border>
                 </Popup>
-            </StackPanel>
-
-            <!--  右区：音量 + CPU / 内存 / 网络  -->
-            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
-                <Grid VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Separator Grid.Column="0" Style="{StaticResource AppleMenuSeparator}" />
-                    <ItemsControl x:Name="RightItems" Grid.Column="1" ItemsSource="{Binding RightWidgets}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemContainerStyle>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="Margin" Value="9,0" />
-                                <Setter Property="VerticalAlignment" Value="Center" />
-                            </Style>
-                        </ItemsControl.ItemContainerStyle>
-                    </ItemsControl>
-                </Grid>
 
                 <!--  音量在最右侧（最外），网络等指标在其内侧  -->
                 <Button x:Name="AudioButton"
