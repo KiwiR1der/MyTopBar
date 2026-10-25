@@ -136,8 +136,8 @@ dotnet run --project MyTopBar
 ## 已知限制
 
 - **Blur 材质**：Windows 11 已废弃 `ACCENT_ENABLE_BLURBEHIND`，会回退到 Acrylic
-- **Mica 与 Acrylic 观感差异有限**：深色下 Mica 较暗且不透壁纸
-- **歌词匹配**：依赖 LRCLIB 的曲库。纯音乐、小众本地曲目可能匹配不到，此时显示曲名
+- **Mica 与 Acrylic 观感不同**：Mica 走原生 SystemBackdrop，颜色均匀、不透壁纸；Acrylic 走合成路径，会透出壁纸
+- **歌词匹配**：依赖 LRCLIB 的曲库。纯音乐、小众本地曲目可能匹配不到；只有纯文本歌词时显示首行，无时间轴不滚动
 - **单显示器**：顶栏跟随窗口所在屏幕，未做多屏独立配置
 - **未实现开机自启**
 
