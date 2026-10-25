@@ -29,14 +29,19 @@ namespace MyTopBar.Widgets
 
         [ObservableProperty]
         private string _nextText = string.Empty;
-
         public LyricsWidgetViewModel(MediaSessionService media, Dispatcher dispatcher)
         {
             _media = media;
             _dispatcher = dispatcher;
-            _media.TrackChanged += OnTrackChanged;
             _ticker.Interval = TimeSpan.FromMilliseconds(250);
             _ticker.Tick += OnTick;
+            _media.TrackChanged += OnTrackChanged;
+        }
+
+        public void Start()
+        {
+            _ticker.Start();
+            _ = _media.StartAsync();
         }
 
         public override string Id => "lyrics";
@@ -53,27 +58,32 @@ namespace MyTopBar.Widgets
         /// <summary>无播放时是否隐藏整块。</summary>
         public bool HideWhenIdle { get; set; } = true;
 
-        public void Start()
-        {
-            _ticker.Start();
-            _ = _media.StartAsync();
-        }
+        /// <summary>
+        /// 按当前播放位置定位歌词行并刷新文本。
+        /// force=true 时即使行号没变也强制刷新，用于切歌后立即出词。
+        private void OnTick(object? sender, EventArgs e) => RefreshFromClock(force: false);
 
-        private void OnTick(object? sender, EventArgs e)
+        private void RefreshFromClock(bool force)
         {
             if (_lines.Count == 0)
             {
                 return;
             }
 
+            // 播放位置早于第一行歌词时 FindIndex 返回 -1，退回第 0 行，避免整块空白。
             int index = FindIndex(EstimatePosition());
-            if (index == _lastIndex)
+            if (index < 0)
+            {
+                index = 0;
+            }
+
+            if (!force && index == _lastIndex)
             {
                 return;
             }
 
             _lastIndex = index;
-            Text = index >= 0 && index < _lines.Count ? _lines[index].Text : string.Empty;
+            Text = index < _lines.Count ? _lines[index].Text : string.Empty;
             NextText = ShowNextLine && index + 1 < _lines.Count ? _lines[index + 1].Text : string.Empty;
         }
 
@@ -136,7 +146,7 @@ namespace MyTopBar.Widgets
             _basePosition = info.Position;
             _baseStamp = DateTime.UtcNow;
 
-            string key = $"{info.Title}\u0001{info.Artist}";
+            string key = info.Title + "\u0001" + info.Artist;
             if (key == _loadedKey)
             {
                 return;
@@ -163,8 +173,6 @@ namespace MyTopBar.Widgets
                 }
 
                 LrcResult payload = result.Value;
-
-                // 带时间轴才滚动；纯文本只做静态展示。
                 IReadOnlyList<LyricLine> parsed = payload.IsSynced
                     ? LrcParser.Parse(payload.Lrc)
                     : Array.Empty<LyricLine>();
@@ -173,12 +181,18 @@ namespace MyTopBar.Widgets
                 {
                     _lines = parsed;
                     _lastIndex = -1;
+
                     if (parsed.Count == 0)
                     {
                         // 无时间轴：显示纯文本首行，至少让用户看到歌词存在。
                         Text = FirstLine(payload.Lrc, info.Title);
                         NextText = string.Empty;
+                        return;
                     }
+
+                    // 关键：拿到时间轴后立即按当前位置刷新一次，
+                    // 否则要等 OnTick 发现 index 变化，而 index 未变时会一直空白。
+                    RefreshFromClock(force: true);
                 });
             }
             catch
@@ -188,12 +202,10 @@ namespace MyTopBar.Widgets
         }
 
         /// <summary>
-        /// 查询歌词。优先带时间轴（syncedLyrics），取不到时退回纯文本（plainLyrics）。
+        /// 查询歌词。优先带时间轴，取不到时退回纯文本。
         /// </summary>
         private static async Task<LrcResult> FetchLrcAsync(string rawTitle, string artist)
         {
-            // 不少播放器会把曲名包成 "[Sunrise]"、"《Sunrise》"、"(Sunrise)" 这类形式，
-            // 直接拿去精确匹配会失败，先清洗一遍。
             string title = CleanTitle(rawTitle);
 
             // 1) 精确匹配
@@ -206,8 +218,8 @@ namespace MyTopBar.Widgets
                 return exact.Value;
             }
 
-            // 2) 搜索匹配：优先带时间轴的条目
-            string searchUrl = $"https://lrclib.net/api/search?q={Uri.EscapeDataString(title + " " + artist)}";
+            // 2) 搜索匹配：优先带时间轴
+            string searchUrl = "https://lrclib.net/api/search?q=" + Uri.EscapeDataString(title + " " + artist);
             try
             {
                 string json = await Http.GetStringAsync(searchUrl).ConfigureAwait(false);
@@ -221,12 +233,17 @@ namespace MyTopBar.Widgets
                 foreach (JsonElement item in doc.RootElement.EnumerateArray())
                 {
                     LrcResult r = ReadItem(item);
-                    if (!r.IsEmpty && r.IsSynced)
+                    if (r.IsEmpty)
+                    {
+                        continue;
+                    }
+
+                    if (r.IsSynced)
                     {
                         return r;
                     }
 
-                    if (!r.IsEmpty && plainFallback.IsEmpty)
+                    if (plainFallback.IsEmpty)
                     {
                         plainFallback = r;
                     }
@@ -256,11 +273,6 @@ namespace MyTopBar.Widgets
 
         private static LrcResult ReadItem(JsonElement item)
         {
-            if (item.ValueKind != JsonValueKind.Object)
-            {
-                return default;
-            }
-
             if (item.TryGetProperty("syncedLyrics", out JsonElement synced)
                 && synced.ValueKind == JsonValueKind.String
                 && !string.IsNullOrWhiteSpace(synced.GetString()))
@@ -294,20 +306,19 @@ namespace MyTopBar.Widgets
                 char first = t[0];
                 char last = t[^1];
                 bool paired =
-                    (first == '[' && last == ']') ||
-                    (first == '(' && last == ')') ||
-                    (first == '《' && last == '》') ||
-                    (first == '【' && last == '】') ||
-                    (first == '"' && last == '"') ||
-                    (first == '\'' && last == '\'');
+                    (first == (char)91 && last == (char)93) ||
+                    (first == (char)40 && last == (char)41) ||
+                    (first == (char)0x300A && last == (char)0x300B) ||
+                    (first == (char)0x3010 && last == (char)0x3011) ||
+                    (first == (char)34 && last == (char)34) ||
+                    (first == (char)39 && last == (char)39);
 
                 if (!paired)
                 {
                     break;
                 }
 
-                t = t[1..^1].Trim();
-                t = t[1..^1].Trim();
+                t = t.Substring(1, t.Length - 2).Trim();
             }
 
             return t.Length == 0 ? title.Trim() : t;
@@ -321,7 +332,7 @@ namespace MyTopBar.Widgets
                 return fallback;
             }
 
-            foreach (string line in plain.Split('\n'))
+            foreach (string line in plain.Split((char)10))
             {
                 string trimmed = line.Trim();
                 if (trimmed.Length > 0)
