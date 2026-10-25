@@ -12,7 +12,21 @@ namespace MyTopBar.Widgets
     /// </summary>
     public sealed partial class LyricsWidgetViewModel : WidgetViewModelBase
     {
-        private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+        private static readonly HttpClient Http = CreateHttp();
+
+        /// <summary>
+        /// 网易云接口要求带浏览器 UA 与 Referer，否则可能被拒绝；
+        /// 统一在客户端上设置，避免每次请求重复拼头。
+        /// </summary>
+        private static HttpClient CreateHttp()
+        {
+            var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            client.DefaultRequestHeaders.TryAddWithoutValidation(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://music.163.com/");
+            return client;
+        }
 
         private readonly MediaSessionService _media;
         private readonly Dispatcher _dispatcher;
@@ -219,6 +233,20 @@ namespace MyTopBar.Widgets
         {
             string title = CleanTitle(rawTitle);
 
+            // 1) 网易云：中文曲库覆盖最好，《写给黄淮》这类歌只有它有。
+            LrcResult netease = await TryNeteaseAsync(title, artist).ConfigureAwait(false);
+            if (!netease.IsEmpty)
+            {
+                return netease;
+            }
+
+            // 2) LRCLIB：国际曲库，作为回退。
+            return await TryLrclibAsync(title, artist).ConfigureAwait(false);
+        }
+
+        /// <summary>LRCLIB：先精确匹配，再搜索。</summary>
+        private static async Task<LrcResult> TryLrclibAsync(string title, string artist)
+        {
             // 1) 精确匹配
             string getUrl = "https://lrclib.net/api/get"
                 + "?track_name=" + Uri.EscapeDataString(title)
@@ -377,6 +405,95 @@ namespace MyTopBar.Widgets
             return fallback;
         }
 
+        /// <summary>
+        /// 网易云：先搜索歌曲拿 id，再按 id 取歌词。
+        /// 中文曲库覆盖明显好于 LRCLIB，作为首选来源。
+        /// </summary>
+        private static async Task<LrcResult> TryNeteaseAsync(string title, string artist)
+        {
+            long songId = await SearchNeteaseSongAsync(title, artist).ConfigureAwait(false);
+            if (songId <= 0)
+            {
+                return default;
+            }
+
+            string url = "https://music.163.com/api/song/lyric?id=" + songId + "&lv=1&kv=1&tv=-1";
+            try
+            {
+                string json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                using JsonDocument doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("lrc", out JsonElement lrc)
+                    && lrc.TryGetProperty("lyric", out JsonElement lyricEl)
+                    && lyricEl.GetString() is { Length: > 0 } text
+                    && !string.IsNullOrWhiteSpace(text))
+                {
+                    return new LrcResult(text, true);
+                }
+            }
+            catch
+            {
+                // 网络异常交由调用方回退到下一个来源。
+            }
+
+            return default;
+        }
+
+        /// <summary>
+        /// 网易云搜索：返回最匹配歌曲的 id，找不到返回 0。
+        /// 用「标题 + 歌手」搜索，若为空再用纯标题，避免歌手名不规范时漏检。
+        /// </summary>
+        private static async Task<long> SearchNeteaseSongAsync(string title, string artist)
+        {
+            string[] terms = string.IsNullOrWhiteSpace(artist)
+                ? [title]
+                : [title + " " + artist, title];
+
+            foreach (string term in terms)
+            {
+                string url = "https://music.163.com/api/search/get/web?s="
+                    + Uri.EscapeDataString(term)
+                    + "&type=1&offset=0&total=true&limit=10";
+                try
+                {
+                    string json = await Http.GetStringAsync(url).ConfigureAwait(false);
+                    using JsonDocument doc = JsonDocument.Parse(json);
+                    if (!doc.RootElement.TryGetProperty("result", out JsonElement result)
+                        || !result.TryGetProperty("songs", out JsonElement songs)
+                        || songs.ValueKind != JsonValueKind.Array)
+                    {
+                        continue;
+                    }
+
+                    foreach (JsonElement song in songs.EnumerateArray())
+                    {
+                        if (!song.TryGetProperty("name", out JsonElement nameEl)
+                            || nameEl.GetString() is not { } name)
+                        {
+                            continue;
+                        }
+
+                        // 标题需包含目标曲名（忽略大小写），避免搜到无关歌曲。
+                        if (!name.Contains(title, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (song.TryGetProperty("id", out JsonElement idEl)
+                            && idEl.TryGetInt64(out long id))
+                        {
+                            return id;
+                        }
+                    }
+                }
+                catch
+                {
+                    // 换下一个搜索词继续尝试。
+                }
+            }
+
+            return 0;
+        }
         /// <summary>歌词查询结果：内容 + 是否带时间轴。</summary>
         private readonly record struct LrcResult(string Lrc, bool IsSynced)
         {
