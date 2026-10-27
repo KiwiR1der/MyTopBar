@@ -136,17 +136,6 @@ X-QW-Api-Key: {ApiKey}
 - 桌面应用把 Ed25519 私钥存进 `settings.json`，反而比一个可随时吊销的 Key 更危险
 - 官方目前只是"限制"API KEY 的每日请求量，并未禁用
 
-若后续需要 JWT，改动点在 `WeatherWidgetViewModel`：把请求头换成
-`Authorization: Bearer {token}`，并加一个 Ed25519 签名的 JWT 生成类，其余流程不变。
-
-#### 响应需要 Gzip 解压
-
-和风天气**所有响应都做了 Gzip 压缩**（`Content-Encoding: gzip`）。
-共享的 `HttpClient` 必须开启 `AutomaticDecompression`，否则
-`ReadAsStringAsync` 拿到的是压缩字节，按 UTF-8 解码成乱码，JSON 解析必然失败。
-
-这是当初"天气一直不显示"的真实原因——凭据是对的，只是数据没解压。
-
 ## 技术要点
 
 ### 工作区占位
@@ -167,30 +156,7 @@ SetWindowCompositionAttribute(hwnd,
     AccentState = ACCENT_ENABLE_BLURBEHIND (3))
 ```
 
-**为什么不用 DWM 的 SystemBackdrop（Mica / Acrylic）**：
-
-| | 毛玻璃 BLURBEHIND | DWM Acrylic |
-|---|---|---|
-| 效果 | 纯高斯模糊，背景纹理可见 | 模糊 + 噪点 + 叠色调，偏灰白 |
-| 活动状态 | 不受影响 | **长期未激活会退化** |
-| 适用性 | Win10 1809+ | Win11 22H2+ |
-
-关键在第二行：顶栏带 `WS_EX_NOACTIVATE`，**永远不是活动窗口**，
-实测 DWM Acrylic 约 1 分钟后会退化成均匀灰块（`RGB(135,135,135)`，壁纸完全不透）。
-毛玻璃不受这个影响，多帧采样 90 秒颜色恒定。
-
-代价：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，未来系统版本可能失效。
-
-**关键点**：WPF 窗口要让模糊层透出来，必须同时满足
-
-1. `AllowsTransparency="False"`（否则退化为 layered window，模糊失效且 ClearType 变灰）
-2. `Background="Transparent"`
-3. 在窗口渲染后将 `CompositionTarget.BackgroundColor` 设为透明
-4. 客户区扩展到整个窗口（`DwmExtendFrameIntoClientArea` 传 -1）
-5. 先把 DWM 的 `DWMWA_SYSTEMBACKDROP_TYPE` 复位成 `NONE`，
-   否则残留的原生材质会盖在合成层上面
-
-任一条缺失，屏幕上就会是一整条纯黑，或者看起来"什么都没变"。
+> `ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，未来系统版本可能失效。
 
 ### 前台窗口追踪
 
@@ -255,9 +221,6 @@ MyTopBar/
 | [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
 
 字体使用 HarmonyOS Sans SC。
-
-> 材质不再依赖第三方库：毛玻璃直接调用 `SetWindowCompositionAttribute`，
-> 原先的 FluentWpfCore 已移除。
 
 ## 许可证
 
