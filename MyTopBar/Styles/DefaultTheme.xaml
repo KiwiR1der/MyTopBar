@@ -48,26 +48,18 @@
 
     <SolidColorBrush x:Key="BarSeparatorBrush" Color="#1F000000" />
 
-    <!--
-        文字渲染：顶栏背景是 DWM 绘制的亚克力/云母，会随壁纸变化，
-        WPF 无法读取下层内容。此时用 ClearType（子像素抗锯齿）会出问题：
-        它需要知道文字背后的真实颜色才能正确混合，拿不到就退而给文字
-        补一块不透明底做基底，数据刷新重绘时那块补丁会被重新合成，
-        表现为「刷新时闪一下灰框」。
-
-        Grayscale（灰度抗锯齿）不依赖背景色，透明背景下不会有这个问题。
-        ClearTypeHint 也一并去掉——它正是"申请不透明层"的提示。
-    -->
     <Style TargetType="Window">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="UseLayoutRounding" Value="True" />
-        <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale" />
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style TargetType="TextBlock">
-        <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale" />
+        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 

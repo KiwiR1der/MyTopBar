@@ -16,7 +16,7 @@
         ShowInTaskbar="False"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
-        TextOptions.TextRenderingMode="Grayscale"
+        TextOptions.TextRenderingMode="ClearType"
         Topmost="True"
         UseLayoutRounding="True"
         WindowStyle="None"
