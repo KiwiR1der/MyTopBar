@@ -30,14 +30,29 @@ namespace MyTopBar.Services
                 "MyTopBar");
             _filePath = Path.Combine(directory, "settings.json");
             Directory.CreateDirectory(directory);
+
+            bool existed = File.Exists(_filePath);
             Current = Load();
 
-            // 首次启动（或配置损坏回退）时立即落盘一份默认配置，方便用户直接编辑。
-            if (!File.Exists(_filePath))
+            /*
+             * 落盘两种情况：
+             * 1. 首次启动（或配置损坏回退）——生成一份默认配置方便用户直接编辑
+             * 2. 文件已存在，但 Normalize 改写过内容（例如把废弃的
+             *    theme=0 / material=1 迁移成新值）——回写一次，
+             *    避免磁盘上一直留着废弃值、每次启动都要重新迁移
+             */
+            if (!existed)
+            {
+                Flush();
+            }
+            else if (NeedsRewrite)
             {
                 Flush();
             }
         }
+
+        /// <summary>本次加载是否发生过迁移改写，用于决定是否回写磁盘。</summary>
+        private bool NeedsRewrite { get; set; }
 
         /// <summary>当前生效的配置。修改后调用 <see cref="Save"/> 持久化。</summary>
         public AppSettings Current { get; private set; }
@@ -61,7 +76,9 @@ namespace MyTopBar.Services
                 }
 
                 AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
-                return Normalize(loaded ?? CreateDefault());
+                AppSettings normalized = Normalize(loaded ?? CreateDefault(), out bool changed);
+                NeedsRewrite = changed;
+                return normalized;
             }
             catch (Exception)
             {
@@ -73,10 +90,16 @@ namespace MyTopBar.Services
         private static AppSettings CreateDefault() => new();
 
         /// <summary>
-        /// 补齐缺失字段、裁剪非法值，保证运行期不用到处判空。
+        /// 补齐缺失字段、裁剪非法值、迁移已废弃的枚举值。
         /// </summary>
-        private static AppSettings Normalize(AppSettings settings)
+        /// <param name="changed">
+        /// 输出是否发生过迁移改写。true 时调用方应回写磁盘，
+        /// 否则废弃值会一直留在文件里，每次启动重复迁移。
+        /// </param>
+        private static AppSettings Normalize(AppSettings settings, out bool changed)
         {
+            changed = false;
+
             settings.Appearance ??= new AppearanceSettings();
             settings.Api ??= new ApiSettings();
             settings.Api.Hitokoto ??= new HitokotoSettings();
@@ -105,6 +128,18 @@ namespace MyTopBar.Services
             if (settings.Appearance.Material == MaterialKind.Blur)
             {
                 settings.Appearance.Material = MaterialKind.Acrylic;
+                changed = true;
+            }
+
+            /*
+             * 「跟随系统」主题已移除：RefreshFromSystem 一直没有调用点，
+             * 该选项实际上只在启动时读一次注册表，名不副实。
+             * 旧配置里 theme=0 表示跟随系统，这里归一到浅色（与原先的默认观感一致）。
+             */
+            if (settings.Appearance.Theme == ThemeMode.System)
+            {
+                settings.Appearance.Theme = ThemeMode.Light;
+                changed = true;
             }
 
             return settings;
@@ -150,7 +185,8 @@ namespace MyTopBar.Services
         /// <summary>替换当前配置（设置窗口导入/重置时使用）。</summary>
         public void Replace(AppSettings settings)
         {
-            Current = Normalize(settings);
+            // Replace 之后一律会 Save，迁移标记没有意义，丢弃即可。
+            Current = Normalize(settings, out _);
             Changed?.Invoke(this, EventArgs.Empty);
             Save();
         }

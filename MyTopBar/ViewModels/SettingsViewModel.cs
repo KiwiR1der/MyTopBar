@@ -39,10 +39,9 @@ namespace MyTopBar.ViewModels
             new(MaterialKind.None, "None（纯色，不透明）")
         ];
 
-        /// <summary>主题选项。</summary>
+        /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
-            new(ThemeMode.System, "跟随系统"),
             new(ThemeMode.Light, "浅色"),
             new(ThemeMode.Dark, "深色")
         ];

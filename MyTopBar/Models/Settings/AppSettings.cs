@@ -3,9 +3,18 @@ using MyTopBar.Infrastructure.Material;
 namespace MyTopBar.Models.Settings
 {
     /// <summary>应用主题偏好。</summary>
+    /// <remarks>
+    /// 原先是 System / Light / Dark 三档，System 会读注册表跟随系统深浅色。
+    /// 但 RefreshFromSystem 一直没有调用点，所谓「跟随系统」实际只在启动时读一次，
+    /// 挂着这个选项反而误导，已移除。
+    ///
+    /// 保留 System = 0 这个枚举位用于兼容旧配置：
+    /// 老版本 settings.json 里 "theme": 0 表示跟随系统，
+    /// 迁移时按 Light 处理（见 SettingsService.Normalize），不能让它变成未定义值。
+    /// </remarks>
     public enum ThemeMode
     {
-        /// <summary>跟随系统（读取注册表 AppsUseLightTheme）。</summary>
+        /// <summary>已废弃。仅为兼容旧配置保留，读取时归一到 <see cref="Light"/>。</summary>
         System = 0,
         Light = 1,
         Dark = 2
@@ -26,7 +35,7 @@ namespace MyTopBar.Models.Settings
     {
         public MaterialKind Material { get; set; } = MaterialKind.Mica;
 
-        public ThemeMode Theme { get; set; } = ThemeMode.System;
+        public ThemeMode Theme { get; set; } = ThemeMode.Light;
 
         /// <summary>顶栏高度（WPF DIP），28–40。</summary>
         public double BarHeight { get; set; } = 30;

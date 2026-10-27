@@ -64,9 +64,9 @@ dotnet run --project MyTopBar
 ```jsonc
 {
   "appearance": {
-    "material": 2,      // 0=None 1=Blur 2=Acrylic 3=Mica
-    "theme": 0,         // 0=跟随系统 1=浅色 2=深色
-    "barHeight": 28     // 28-40
+    "material": 3,      // 0=None 1=MicaAlt 2=Acrylic 3=Mica
+    "theme": 1,         // 1=浅色 2=深色
+    "barHeight": 30     // 28-40
   },
   "widgets": [
     { "id": "clock", "enabled": true, "order": 0, "options": {} }

@@ -1,15 +1,13 @@
-using Microsoft.Win32;
 using MyTopBar.Models.Settings;
 using System.Windows;
 using System.Windows.Media;
 namespace MyTopBar.Services
 {
     /// <summary>
-    /// 解析最终的明暗模式，并在系统主题变化时通知界面换色。
+    /// 解析最终的明暗模式，并在变化时通知界面换色。
     /// </summary>
     public sealed class ThemeService : IDisposable
     {
-        private ThemeMode _mode = ThemeMode.System;
         private bool _disposed;
 
         /// <summary>当前是否为深色。</summary>
@@ -17,14 +15,16 @@ namespace MyTopBar.Services
 
         /// <summary>明暗模式生效时触发。</summary>
         public event EventHandler<bool>? ThemeChanged;
+
         public void Apply(ThemeMode mode)
         {
             ThrowIfDisposed();
-            _mode = mode;
+
             bool isDark = ResolveIsDark(mode);
             bool changed = isDark != IsDark;
             IsDark = isDark;
             ApplyBrushes(isDark);
+
             if (changed)
             {
                 ThemeChanged?.Invoke(this, isDark);
@@ -79,54 +79,19 @@ namespace MyTopBar.Services
             resources[key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color));
         }
 
-        /// <summary>跟随系统时，重新读取注册表并广播变化。</summary>
-        public void RefreshFromSystem()
-        {
-            if (_mode != ThemeMode.System || _disposed)
-            {
-                return;
-            }
-
-            bool isDark = ResolveIsDark(ThemeMode.System);
-            if (isDark == IsDark)
-            {
-                return;
-            }
-
-            IsDark = isDark;
-            ThemeChanged?.Invoke(this, isDark);
-        }
-
         private void ThrowIfDisposed()
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
         }
 
-
-        private static bool ResolveIsDark(ThemeMode mode)
-        {
-            if (mode == ThemeMode.Dark)
-            {
-                return true;
-            }
-
-            if (mode == ThemeMode.Light)
-            {
-                return false;
-            }
-
-            try
-            {
-                using RegistryKey? key = Registry.CurrentUser.OpenSubKey(
-                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                object? value = key?.GetValue("AppsUseLightTheme");
-                return value is int i && i == 0;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
+        /// <summary>
+        /// 把主题偏好解析成实际明暗。
+        ///
+        /// 只处理 Light / Dark 两档。旧配置里的 System(0) 不应该走到这里
+        /// （SettingsService.Normalize 已将其归一到 Light），
+        /// 万一漏网也按浅色处理，绝不回读注册表。
+        /// </summary>
+        private static bool ResolveIsDark(ThemeMode mode) => mode == ThemeMode.Dark;
 
         public void Dispose()
         {
