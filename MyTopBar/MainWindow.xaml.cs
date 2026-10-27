@@ -190,7 +190,65 @@ namespace MyTopBar
             WindowMaterialConfig.UseWindowComposition = useComposition;
             WindowMaterialConfig.MaterialMode = target;
 
-            _viewModel.OnMaterialApplied(new MaterialApplyResult(kind, kind, false, "fluentwpfcore"));
+            /*
+             * 上报真实生效的材质，而不是把请求值原样回显。
+             *
+             * DWM 在个别系统版本上会忽略 DWMWA_SYSTEMBACKDROP_TYPE
+             * （例如 Win11 21H2 还没有这个属性，或组策略禁用了特效），
+             * 此时界面若显示"已应用 Mica"就是假的。
+             * 这里用 DwmGetWindowAttribute 回读一次，按实际值上报。
+             */
+            _viewModel.OnMaterialApplied(ReadBackMaterialResult(kind, handle));
+        }
+
+        /// <summary>
+        /// 回读 DWM 实际生效的系统背景材质，与请求值比对。
+        ///
+        /// DWMSBT 取值：NONE=1 / Mica=2 / Acrylic=3 / MicaAlt=4。
+        /// 读不到（老系统没有该属性）时按"请求即生效"处理，
+        /// 因为那种情况下走的是合成路径，无法用 DWM 属性验证。
+        /// </summary>
+        private static MaterialApplyResult ReadBackMaterialResult(MaterialKind requested, IntPtr handle)
+        {
+            if (handle == IntPtr.Zero || !SupportsSystemBackdrop)
+            {
+                return new MaterialApplyResult(requested, requested, false, "composition");
+            }
+
+            try
+            {
+                int actual = 0;
+                int hr = NativeMethods.DwmGetWindowAttribute(
+                    handle,
+                    NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE,
+                    ref actual,
+                    sizeof(int));
+
+                if (hr != 0)
+                {
+                    return new MaterialApplyResult(requested, requested, false, $"dwm hr=0x{hr:X8}");
+                }
+
+                MaterialKind applied = actual switch
+                {
+                    NativeMethods.DWMSBT_NONE => MaterialKind.None,
+                    NativeMethods.DWMSBT_MAINWINDOW => MaterialKind.Mica,
+                    NativeMethods.DWMSBT_TRANSIENTWINDOW => MaterialKind.Acrylic,
+                    NativeMethods.DWMSBT_TABBEDWINDOW => MaterialKind.MicaAlt,
+                    _ => requested
+                };
+
+                bool fallback = applied != requested;
+                return new MaterialApplyResult(
+                    requested,
+                    applied,
+                    fallback,
+                    fallback ? $"DWM 实际为 {applied}（backdrop={actual}）" : $"dwm backdrop={actual}");
+            }
+            catch (Exception ex)
+            {
+                return new MaterialApplyResult(requested, requested, false, ex.GetType().Name);
+            }
         }
 
         /// <summary>

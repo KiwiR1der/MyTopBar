@@ -92,6 +92,9 @@ namespace MyTopBar.Infrastructure.Interop
         [DllImport("dwmapi.dll", PreserveSig = true)]
         public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
+        [DllImport("dwmapi.dll", PreserveSig = true)]
+        public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct MARGINS
         {

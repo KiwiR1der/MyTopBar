@@ -5,8 +5,12 @@ using Windows.Media.Streaming;
 namespace MyTopBar.Services.Media
 {
     /// <summary>
-    /// 通过 SMTC 读取任意播放器的当前曲目，并在切歌/播放状态变化时通知。
+    /// 通过 SMTC 读取播放器的当前曲目，并在切歌/播放状态变化时通知。
     /// 所有 WinRT 事件都在非 UI 线程触发，统一回到 Dispatcher。
+    ///
+    /// 支持按来源应用筛选：同时有 Chrome 和音乐播放器在播放时，
+    /// 可以指定只读取音乐播放器的会话（默认行为是跟随系统当前会话，
+    /// 那个通常是浏览器，会导致歌词显示成网页里正在播的东西）。
     /// </summary>
     public sealed class MediaSessionService : IDisposable
     {
@@ -15,10 +19,22 @@ namespace MyTopBar.Services.Media
         private GlobalSystemMediaTransportControlsSession? _session;
         private bool _disposed;
 
+        /// <summary>
+        /// 只接受该来源的会话（按 SourceAppUserModelId 匹配，忽略大小写）。
+        /// 空字符串表示跟随系统当前会话。
+        /// </summary>
+        private string _sourceFilter = string.Empty;
+
         /// <summary>曲目信息变化（含播放/暂停）。</summary>
         public event Action<MediaTrackInfo?>? TrackChanged;
 
+        /// <summary>可用会话的来源列表变化（供设置界面展示可选的应用）。</summary>
+        public event Action<IReadOnlyList<string>>? AvailableSourcesChanged;
+
         public MediaTrackInfo? Current { get; private set; }
+
+        /// <summary>当前已知的可选来源，第一个为系统当前会话。</summary>
+        public IReadOnlyList<string> AvailableSources { get; private set; } = Array.Empty<string>();
 
         public MediaSessionService(Dispatcher dispatcher)
         {
@@ -43,7 +59,9 @@ namespace MyTopBar.Services.Media
             {
                 _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
                 _manager.CurrentSessionChanged += OnCurrentSessionChanged;
-                AttachSession(_manager.GetCurrentSession());
+                _manager.SessionsChanged += OnSessionsChanged;
+                RefreshAvailableSources();
+                AttachSession(PickSession());
             }
             catch
             {
@@ -51,11 +69,126 @@ namespace MyTopBar.Services.Media
             }
         }
 
+        /// <summary>
+        /// 设置来源筛选。传空字符串则跟随系统当前会话。
+        /// 切换后会立即重新绑定会话。
+        /// </summary>
+        public void SetSourceFilter(string? sourceAppId)
+        {
+            string next = (sourceAppId ?? string.Empty).Trim();
+            if (string.Equals(next, _sourceFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _sourceFilter = next;
+
+            if (_manager is null)
+            {
+                return;
+            }
+
+            AttachSession(PickSession());
+        }
+
+        /// <summary>
+        /// 选出要绑定的会话。
+        /// 配了筛选就优先找匹配来源的会话；找不到则回退到系统当前会话，
+        /// 否则用户指定的播放器没在播放时会整块空白。
+        /// </summary>
+        private GlobalSystemMediaTransportControlsSession? PickSession()
+        {
+            if (_manager is null)
+            {
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(_sourceFilter))
+            {
+                return _manager.GetCurrentSession();
+            }
+
+            try
+            {
+                foreach (GlobalSystemMediaTransportControlsSession candidate in _manager.GetSessions())
+                {
+                    if (string.Equals(candidate.SourceAppUserModelId, _sourceFilter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch
+            {
+                // 枚举失败时退回系统当前会话。
+            }
+
+            return _manager.GetCurrentSession();
+        }
+
+        private void RefreshAvailableSources()
+        {
+            if (_manager is null)
+            {
+                return;
+            }
+
+            var sources = new List<string>();
+            try
+            {
+                foreach (GlobalSystemMediaTransportControlsSession session in _manager.GetSessions())
+                {
+                    string id = session.SourceAppUserModelId ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(id)
+                        && !sources.Contains(id, StringComparer.OrdinalIgnoreCase))
+                    {
+                        sources.Add(id);
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略枚举异常，保持上一次的列表。
+            }
+
+            if (sources.SequenceEqual(AvailableSources, StringComparer.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            AvailableSources = sources;
+            _dispatcher.BeginInvoke(() => AvailableSourcesChanged?.Invoke(AvailableSources));
+        }
+
+        private void OnSessionsChanged(
+            GlobalSystemMediaTransportControlsSessionManager sender,
+            SessionsChangedEventArgs args)
+        {
+            RefreshAvailableSources();
+
+            // 配了筛选时，目标播放器可能是刚启动的那个，需要重新挑一次。
+            if (!string.IsNullOrEmpty(_sourceFilter))
+            {
+                GlobalSystemMediaTransportControlsSession? next = PickSession();
+                if (!ReferenceEquals(next, _session))
+                {
+                    AttachSession(next);
+                }
+            }
+        }
+
         private void OnCurrentSessionChanged(
             GlobalSystemMediaTransportControlsSessionManager sender,
             CurrentSessionChangedEventArgs args)
         {
-            AttachSession(sender.GetCurrentSession());
+            RefreshAvailableSources();
+
+            // 配了筛选时不跟随系统的当前会话变化，除非当前绑定的会话已经失效。
+            if (string.IsNullOrEmpty(_sourceFilter)
+                || _session is null)
+            {
+                AttachSession(PickSession());
+            }
         }
 
         private void AttachSession(GlobalSystemMediaTransportControlsSession? session)
@@ -169,6 +302,7 @@ namespace MyTopBar.Services.Media
             if (_manager is not null)
             {
                 _manager.CurrentSessionChanged -= OnCurrentSessionChanged;
+                _manager.SessionsChanged -= OnSessionsChanged;
                 _manager = null;
             }
         }

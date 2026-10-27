@@ -17,6 +17,7 @@ namespace MyTopBar.ViewModels
     {
         private readonly SettingsService _settings;
         private readonly ThemeService _theme;
+        private readonly Widgets.LyricsWidgetViewModel _lyrics;
 
         /// <summary>
         /// 构造期间为 true。此时通过属性赋值只是为了把配置同步到界面，
@@ -89,6 +90,16 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private bool _isQweatherSearching;
 
+        /// <summary>
+        /// 可选的媒体来源。第一项固定为「跟随系统」，后面是当前检测到的播放器。
+        /// 值为 null 或空表示不筛选。
+        /// </summary>
+        public ObservableCollection<MediaSourceOption> MediaSources { get; } = new();
+
+        /// <summary>当前选中的媒体来源。</summary>
+        [ObservableProperty]
+        private MediaSourceOption? _selectedMediaSource;
+
         [ObservableProperty]
         private bool _hitokotoEnabled;
 
@@ -115,10 +126,15 @@ namespace MyTopBar.ViewModels
         private readonly Dictionary<string, Widgets.WidgetViewModelBase> _widgetById =
             new(StringComparer.OrdinalIgnoreCase);
 
-        public SettingsViewModel(SettingsService settings, ThemeService theme, Widgets.WidgetRegistry registry)
+        public SettingsViewModel(
+            SettingsService settings,
+            ThemeService theme,
+            Widgets.WidgetRegistry registry,
+            Widgets.LyricsWidgetViewModel lyrics)
         {
             _settings = settings;
             _theme = theme;
+            _lyrics = lyrics;
 
             AppSettings current = settings.Current;
             _material = Materials.FirstOrDefault(m => m.Kind == current.Appearance.Material) ?? Materials[0];
@@ -143,6 +159,8 @@ namespace MyTopBar.ViewModels
                 : qw.PlaceName;
 
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
+
+            InitMediaSources(current.Lyrics.SourceAppId, lyrics);
 
             foreach (Widgets.WidgetViewModelBase widget in registry.All)
             {
@@ -352,6 +370,68 @@ namespace MyTopBar.ViewModels
         }
 
         /// <summary>
+        /// 初始化媒体来源下拉框。
+        ///
+        /// 第一项固定是「跟随系统」，之后是当前检测到的会话来源。
+        /// 保存过的来源即使当前没在播放也要保留在列表里，
+        /// 否则用户配好之后重启应用就看不到自己选的那一项了。
+        /// </summary>
+        private void InitMediaSources(string savedSourceId, Widgets.LyricsWidgetViewModel lyrics)
+        {
+            RebuildMediaSources(lyrics.AvailableMediaSources, savedSourceId);
+
+            // 播放器打开/关闭时刷新列表，让用户不必重启应用就能选到新来源。
+            lyrics.AvailableMediaSourcesChanged += OnAvailableMediaSourcesChanged;
+        }
+
+        private void OnAvailableMediaSourcesChanged(IReadOnlyList<string> sources)
+        {
+            string current = SelectedMediaSource?.AppId ?? string.Empty;
+            RebuildMediaSources(sources, current);
+        }
+
+        private void RebuildMediaSources(IReadOnlyList<string> sources, string selectedId)
+        {
+            MediaSources.Clear();
+
+            MediaSources.Add(MediaSourceOption.FollowSystem);
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string id in sources)
+            {
+                if (!string.IsNullOrWhiteSpace(id) && seen.Add(id))
+                {
+                    MediaSources.Add(new MediaSourceOption(id, MediaSourceOption.FriendlyName(id)));
+                }
+            }
+
+            // 已保存但当前未检测到的来源补一项，避免选项"消失"。
+            if (!string.IsNullOrWhiteSpace(selectedId) && !seen.Contains(selectedId))
+            {
+                MediaSources.Add(new MediaSourceOption(selectedId, MediaSourceOption.FriendlyName(selectedId)));
+            }
+
+            SelectedMediaSource = MediaSources.FirstOrDefault(
+                s => string.Equals(s.AppId, selectedId, StringComparison.OrdinalIgnoreCase))
+                ?? MediaSources[0];
+        }
+
+        partial void OnSelectedMediaSourceChanged(MediaSourceOption? value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            string id = value?.AppId ?? string.Empty;
+            _settings.Current.Lyrics.SourceAppId = id;
+            _settings.Save();
+
+            // 立刻让歌词组件改用新来源，不必重启。
+            _lyrics.SetSourceFilter(id);
+        }
+
+        /// <summary>
         /// 判断界面上的值是否与已生效配置不同。
         /// 逐字段比较而不是监听每个输入框，避免"删掉又打回去"这种操作被误判。
         /// </summary>
@@ -466,6 +546,65 @@ namespace MyTopBar.ViewModels
         {
             // null 视为未勾选，避免把 null 写入配置。
             _onChanged(Id, value ?? false);
+        }
+    }
+
+    /// <summary>
+    /// 媒体来源下拉项。AppId 为空表示跟随系统当前会话。
+    /// </summary>
+    public sealed record MediaSourceOption(string AppId, string Display)
+    {
+        /// <summary>「跟随系统」这一项。</summary>
+        public static MediaSourceOption FollowSystem { get; } = new(string.Empty, "跟随系统当前会话");
+
+        public override string ToString() => Display;
+
+        /// <summary>
+        /// 把 SMTC 的 SourceAppUserModelId 转成可读名称。
+        ///
+        /// AUMID 形如：
+        ///   chrome.exe
+        ///   SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify
+        ///   Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic
+        ///   C:\Program Files\...\cloudmusic.exe
+        /// 取感叹号前的包名、去掉版本后缀，比原样显示友好得多。
+        /// </summary>
+        public static string FriendlyName(string appId)
+        {
+            if (string.IsNullOrWhiteSpace(appId))
+            {
+                return FollowSystem.Display;
+            }
+
+            string value = appId.Trim();
+
+            // 取包名部分（! 之后是应用内入口名，对用户没意义）。
+            int bang = value.IndexOf('!');
+            if (bang > 0)
+            {
+                value = value[..bang];
+            }
+
+            // 去掉包名里的发布者哈希后缀：Microsoft.ZuneMusic_8wekyb3d8bbwe
+            int underscore = value.LastIndexOf('_');
+            if (underscore > 0 && underscore < value.Length - 1)
+            {
+                value = value[..underscore];
+            }
+
+            // 完整路径只留文件名。
+            if (value.Contains('\\') || value.Contains('/'))
+            {
+                int slash = value.LastIndexOfAny(['\\', '/']);
+                if (slash >= 0 && slash < value.Length - 1)
+                {
+                    value = value[(slash + 1)..];
+                }
+            }
+
+            return value.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? value
+                : value;
         }
     }
 }

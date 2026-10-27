@@ -332,6 +332,40 @@
                 </TextBlock.Style>
             </TextBlock>
 
+            <!--  ==========  歌词  ==========  -->
+            <TextBlock Style="{StaticResource SectionHeader}" Text="歌词" />
+
+            <Border Margin="0,0,0,10"
+                    Padding="10,8"
+                    Background="{DynamicResource InputBackgroundBrush}"
+                    BorderBrush="{DynamicResource InputBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                               Style="{StaticResource HintText}"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,0"
+                               Text="同时开着浏览器和音乐播放器时，系统会跟随最后发声的那个，歌词可能跳到网页上正在播的内容。指定来源后只读取该应用的媒体信息。" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="媒体来源" />
+                <ComboBox Width="300"
+                          DisplayMemberPath="Display"
+                          ItemsSource="{Binding MediaSources}"
+                          SelectedItem="{Binding SelectedMediaSource, Mode=TwoWay}"
+                          Style="{StaticResource SettingsComboBox}" />
+            </StackPanel>
+
+            <TextBlock Margin="112,0,0,14"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                       FontFamily="{StaticResource AppFont}"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="列表里只显示当前正在播放的来源；关掉播放器后该项仍会保留，不会丢失配置。" />
+
             <!--  ==========  其他  ==========  -->
             <TextBlock Style="{StaticResource SectionHeader}" Text="其他" />
 

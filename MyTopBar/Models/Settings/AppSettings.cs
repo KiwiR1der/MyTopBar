@@ -113,6 +113,19 @@ namespace MyTopBar.Models.Settings
         public string Language { get; set; } = "zh";
     }
 
+    /// <summary>歌词组件设置。</summary>
+    public sealed class LyricsSettings
+    {
+        /// <summary>
+        /// 只读取该来源的媒体会话（SourceAppUserModelId）。
+        /// 空字符串表示跟随系统当前会话。
+        ///
+        /// 例如同时开着 Chrome 和网易云，系统当前会话切换会导致歌词乱跳，
+        /// 填上网易云的 AUMID 就只跟踪它。
+        /// </summary>
+        public string SourceAppId { get; set; } = string.Empty;
+    }
+
     /// <summary>外部 API 凭据。</summary>
     public sealed class ApiSettings
     {
@@ -144,6 +157,8 @@ namespace MyTopBar.Models.Settings
         public List<WidgetSettings> Widgets { get; set; } = new();
 
         public ApiSettings Api { get; set; } = new();
+
+        public LyricsSettings Lyrics { get; set; } = new();
 
         public MetricsSettings Metrics { get; set; } = new();
     }

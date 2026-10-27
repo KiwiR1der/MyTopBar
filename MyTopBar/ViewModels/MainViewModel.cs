@@ -265,6 +265,7 @@ namespace MyTopBar.ViewModels
                     weather.Start();
                     break;
                 case LyricsWidgetViewModel lyrics:
+                    lyrics.SetSourceFilter(Settings.Lyrics.SourceAppId);
                     lyrics.Start();
                     break;
             }

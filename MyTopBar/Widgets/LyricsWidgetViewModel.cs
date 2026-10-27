@@ -48,6 +48,13 @@ namespace MyTopBar.Widgets
         private TimeSpan _basePosition;
         private DateTime _baseStamp = DateTime.UtcNow;
 
+        /// <summary>
+        /// 歌词请求版本号。每次切歌递增，异步响应回来时比对，
+        /// 丢弃已过期的结果——否则连按两次「下一首」时，
+        /// 前一首的响应可能后到，把当前这首歌的歌词覆盖掉。
+        /// </summary>
+        private int _loadVersion;
+
         [ObservableProperty]
         private string _text = string.Empty;
 
@@ -85,6 +92,25 @@ namespace MyTopBar.Widgets
 
         /// <summary>无播放时是否隐藏整块。</summary>
         public bool HideWhenIdle { get; set; } = true;
+
+        /// <summary>
+        /// 只从指定来源读取媒体信息（SourceAppUserModelId）。
+        /// 空字符串表示跟随系统当前会话。
+        ///
+        /// 用于「Chrome 和音乐播放器同时在播，只想看音乐播放器」的场景：
+        /// 系统当前会话往往是最后发声的那个，浏览器一放视频歌词就跳走了。
+        /// </summary>
+        public void SetSourceFilter(string? sourceAppId) => _media.SetSourceFilter(sourceAppId);
+
+        /// <summary>当前可选的媒体来源，供设置界面下拉选择。</summary>
+        public IReadOnlyList<string> AvailableMediaSources => _media.AvailableSources;
+
+        /// <summary>可用来源发生变化（播放器打开/关闭时）。</summary>
+        public event Action<IReadOnlyList<string>>? AvailableMediaSourcesChanged
+        {
+            add => _media.AvailableSourcesChanged += value;
+            remove => _media.AvailableSourcesChanged -= value;
+        }
 
         /// <summary>
         /// 当前是否有活跃的媒体会话。中区据此在「歌词」与「一言」间互斥切换：
@@ -169,6 +195,8 @@ namespace MyTopBar.Widgets
         {
             if (track is null)
             {
+                // 作废在途请求，避免切到"无播放"后旧歌词又冒出来。
+                _loadVersion++;
                 _lines = Array.Empty<LyricLine>();
                 _loadedKey = string.Empty;
                 _lastIndex = -1;
@@ -191,19 +219,34 @@ namespace MyTopBar.Widgets
             }
 
             _loadedKey = key;
-            _ = LoadLyricsAsync(info);
+
+            // 换歌就作废所有在途请求，保证只有最新一次的结果被采纳。
+            int version = ++_loadVersion;
+            _ = LoadLyricsAsync(info, version);
         }
 
-        private async Task LoadLyricsAsync(MediaTrackInfo info)
+        private async Task LoadLyricsAsync(MediaTrackInfo info, int version)
         {
             try
             {
                 LrcResult? result = await FetchLrcAsync(info.Title, info.Artist).ConfigureAwait(false);
+
+                // 请求期间又切歌了，这份结果已经过期，直接丢弃。
+                if (version != _loadVersion)
+                {
+                    return;
+                }
+
                 // 查不到（含搜索无结果）统一按 null 处理，避免 default(LrcResult) 这种"非 null 但为空"的坑。
                 if (result is null || result.Value.IsEmpty)
                 {
                     _ = _dispatcher.BeginInvoke(() =>
                     {
+                        if (version != _loadVersion)
+                        {
+                            return;
+                        }
+
                         _lines = Array.Empty<LyricLine>();
                         _lastIndex = -1;
                         Text = CleanTitle(info.Title);
@@ -218,6 +261,12 @@ namespace MyTopBar.Widgets
 
                 _ = _dispatcher.BeginInvoke(() =>
                 {
+                    // Dispatcher 回调也可能晚于下一次切歌，这里再校验一次。
+                    if (version != _loadVersion)
+                    {
+                        return;
+                    }
+
                     _lines = parsed;
                     _lastIndex = -1;
 
@@ -236,7 +285,13 @@ namespace MyTopBar.Widgets
             }
             catch
             {
-                _ = _dispatcher.BeginInvoke(() => Text = info.Title);
+                _ = _dispatcher.BeginInvoke(() =>
+                {
+                    if (version == _loadVersion)
+                    {
+                        Text = info.Title;
+                    }
+                });
             }
         }
 
