@@ -2,7 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:widgets="clr-namespace:MyTopBar.Widgets">
 
-    <!--  顶栏内所有组件共用的文字样式  -->
+    <!--
+        顶栏内所有组件共用的文字样式。
+
+        不要再加 RenderOptions.ClearTypeHint="Enabled"：
+        顶栏背景由 DWM 绘制（透明客户区），ClearTypeHint 会促使 WPF
+        为文字申请不透明合成层，数据刷新时那块层重新合成，
+        表现为「刷新时闪灰框」。文字抗锯齿统一用 Grayscale。
+    -->
     <Style x:Key="BarText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
@@ -10,7 +17,7 @@
         <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="TextWrapping" Value="NoWrap" />
-        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale" />
     </Style>
 
     <Style x:Key="BarSecondaryText" BasedOn="{StaticResource BarText}" TargetType="TextBlock">
