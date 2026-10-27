@@ -7,6 +7,7 @@ using MyTopBar.Services;
 using MyTopBar.Services.Media;
 using MyTopBar.ViewModels;
 using MyTopBar.Widgets;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
@@ -80,12 +81,38 @@ namespace MyTopBar
             };
         }
 
+        /// <summary>
+        /// 创建共享的 HttpClient。
+        ///
+        /// AutomaticDecompression 是关键：请求时自动带 Accept-Encoding，
+        /// 响应时自动解压 Gzip / Deflate / Brotli，业务代码拿到的就是明文 JSON。
+        /// </summary>
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression =
+                    DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            };
+
+            return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+        }
+
         private static IServiceProvider ConfigureServices()
         {
             var services = new ServiceCollection();
 
             services.AddSingleton(Dispatcher.CurrentDispatcher);
-            services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(10) });
+
+            /*
+             * 必须开启自动解压。
+             *
+             * 和风天气对所有响应都做了 Gzip 压缩（响应头 Content-Encoding: gzip），
+             * 官方文档「构建 API 请求 - Gzip」一节明确要求客户端自行解压。
+             * 不开这个开关时，ReadAsStringAsync 拿到的是压缩字节，
+             * 按 UTF-8 解码得到乱码，JsonDocument.Parse 直接失败。
+             */
+            services.AddSingleton(CreateHttpClient());
 
             services.AddSingleton<SettingsService>();
             services.AddSingleton<ThemeService>();

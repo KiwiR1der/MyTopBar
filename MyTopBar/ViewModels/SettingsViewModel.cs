@@ -1,8 +1,11 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models.Settings;
 using MyTopBar.Services;
+using MyTopBar.Widgets;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows;
 
 namespace MyTopBar.ViewModels
@@ -51,6 +54,21 @@ namespace MyTopBar.ViewModels
             && !string.IsNullOrWhiteSpace(QweatherApiKey)
             && !string.IsNullOrWhiteSpace(QweatherLatitude)
             && !string.IsNullOrWhiteSpace(QweatherLongitude);
+
+        /// <summary>
+        /// 界面上的天气参数是否与已生效配置不一致。
+        /// true 时「应用」按钮可用，并提示用户还有改动未提交。
+        /// </summary>
+        [ObservableProperty]
+        private bool _hasPendingQWeatherChanges;
+
+        /// <summary>上次应用天气参数的结果，显示在按钮旁边。</summary>
+        [ObservableProperty]
+        private string _qweatherStatus = string.Empty;
+
+        /// <summary>上次结果是否成功，用于着色。</summary>
+        [ObservableProperty]
+        private bool _qweatherStatusIsError;
 
         [ObservableProperty]
         private bool _hitokotoEnabled;
@@ -187,10 +205,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Api.QWeather.ApiHost = (value ?? string.Empty).Trim();
-            OnPropertyChanged(nameof(IsQWeatherConfigured));
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
+            RefreshQWeatherPending();
         }
 
         partial void OnQweatherApiKeyChanged(string value)
@@ -200,10 +215,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Api.QWeather.ApiKey = (value ?? string.Empty).Trim();
-            OnPropertyChanged(nameof(IsQWeatherConfigured));
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
+            RefreshQWeatherPending();
         }
 
         partial void OnQweatherLatitudeChanged(string value)
@@ -213,10 +225,9 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Api.QWeather.Latitude = (value ?? string.Empty).Trim();
-            OnPropertyChanged(nameof(IsQWeatherConfigured));
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
+            // 只更新「待应用」状态，不写配置、不触发请求。
+            // 天气参数由「应用」按钮统一提交，见 ApplyQWeatherCommand。
+            RefreshQWeatherPending();
         }
 
         partial void OnQweatherLongitudeChanged(string value)
@@ -226,10 +237,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Api.QWeather.Longitude = (value ?? string.Empty).Trim();
-            OnPropertyChanged(nameof(IsQWeatherConfigured));
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
+            RefreshQWeatherPending();
         }
 
         partial void OnQweatherIntervalMinutesChanged(double value)
@@ -239,9 +247,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Api.QWeather.IntervalMinutes = (int)Math.Clamp(value, 5, 240);
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
+            RefreshQWeatherPending();
         }
 
         partial void OnHitokotoEnabledChanged(bool value)
@@ -253,6 +259,73 @@ namespace MyTopBar.ViewModels
 
             _settings.Current.Api.Hitokoto.Enabled = value;
             _settings.Save();
+        }
+
+        /// <summary>
+        /// 判断界面上的值是否与已生效配置不同。
+        /// 逐字段比较而不是监听每个输入框，避免"删掉又打回去"这种操作被误判。
+        /// </summary>
+        private void RefreshQWeatherPending()
+        {
+            QWeatherSettings saved = _settings.Current.Api.QWeather;
+
+            bool pending =
+                !string.Equals((QweatherApiHost ?? string.Empty).Trim(), saved.ApiHost, StringComparison.Ordinal)
+                || !string.Equals((QweatherApiKey ?? string.Empty).Trim(), saved.ApiKey, StringComparison.Ordinal)
+                || !string.Equals((QweatherLatitude ?? string.Empty).Trim(), saved.Latitude, StringComparison.Ordinal)
+                || !string.Equals((QweatherLongitude ?? string.Empty).Trim(), saved.Longitude, StringComparison.Ordinal)
+                || (int)Math.Clamp(QweatherIntervalMinutes, 5, 240) != saved.IntervalMinutes;
+
+            HasPendingQWeatherChanges = pending;
+            OnPropertyChanged(nameof(IsQWeatherConfigured));
+        }
+
+        /// <summary>
+        /// 把界面上的天气参数写入配置并立刻请求一次。
+        /// 结果回显到按钮旁，不再静默丢弃。
+        /// </summary>
+        [RelayCommand]
+        private async Task ApplyQWeatherAsync()
+        {
+            if (!IsQWeatherConfigured)
+            {
+                QweatherStatusIsError = true;
+                QweatherStatus = "请先填齐 API Host、API Key 和经纬度";
+                return;
+            }
+
+            if (!double.TryParse(QweatherLatitude, NumberStyles.Float, CultureInfo.InvariantCulture, out _)
+                || !double.TryParse(QweatherLongitude, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+            {
+                QweatherStatusIsError = true;
+                QweatherStatus = "经纬度必须是数字，例如 39.92";
+                return;
+            }
+
+            QWeatherSettings target = _settings.Current.Api.QWeather;
+            target.ApiHost = (QweatherApiHost ?? string.Empty).Trim();
+            target.ApiKey = (QweatherApiKey ?? string.Empty).Trim();
+            target.Latitude = (QweatherLatitude ?? string.Empty).Trim();
+            target.Longitude = (QweatherLongitude ?? string.Empty).Trim();
+            target.IntervalMinutes = (int)Math.Clamp(QweatherIntervalMinutes, 5, 240);
+
+            _settings.Save();
+
+            HasPendingQWeatherChanges = false;
+            QweatherStatusIsError = false;
+            QweatherStatus = "正在请求…";
+
+            // 立刻按新参数请求一次，把真实结果回显给用户。
+            WeatherProbeResult result = await WeatherProbe.ProbeAsync(target).ConfigureAwait(true);
+
+            QweatherStatusIsError = !result.Ok;
+            QweatherStatus = result.Message;
+
+            if (result.Ok)
+            {
+                // 成功后让顶栏按新配置刷新。
+                SettingsApplied?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 

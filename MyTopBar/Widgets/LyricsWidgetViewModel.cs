@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Windows.Threading;
@@ -17,10 +18,19 @@ namespace MyTopBar.Widgets
         /// <summary>
         /// 网易云接口要求带浏览器 UA 与 Referer，否则可能被拒绝；
         /// 统一在客户端上设置，避免每次请求重复拼头。
+        ///
+        /// 同样开启自动解压：LRCLIB 与网易云都可能返回 Gzip，
+        /// 不解压会让 ReadAsStringAsync 拿到乱码、JsonDocument.Parse 失败。
         /// </summary>
         private static HttpClient CreateHttp()
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var handler = new HttpClientHandler
+            {
+                AutomaticDecompression =
+                    DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            };
+
+            var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
             client.DefaultRequestHeaders.TryAddWithoutValidation(
                 "User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");

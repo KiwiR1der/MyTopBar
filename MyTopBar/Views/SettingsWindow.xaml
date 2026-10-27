@@ -161,10 +161,94 @@
                 <TextBlock Style="{StaticResource HintText}" Text="{Binding QweatherIntervalMinutes, StringFormat={}{0:0} 分钟}" />
             </StackPanel>
 
+            <!--
+                应用按钮：参数改完后点击才提交并请求，
+                避免每敲一个字就发一次请求，也让用户能确认结果。
+            -->
+            <StackPanel Margin="0,2,0,6" Orientation="Horizontal">
+                <Button MinWidth="96"
+                        Padding="14,6"
+                        Command="{Binding ApplyQWeatherCommand}"
+                        Content="应用并测试"
+                        FontFamily="{StaticResource AppFont}"
+                        FontSize="13"
+                        Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Root"
+                                                Padding="{TemplateBinding Padding}"
+                                                Background="{TemplateBinding Background}"
+                                                CornerRadius="5">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Root" Property="Opacity" Value="0.88" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <!--  没有改动时按钮置灰，暗示"当前已是生效状态"  -->
+                                <DataTrigger Binding="{Binding HasPendingQWeatherChanges}" Value="False">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!--  改动未提交的提示  -->
+                <TextBlock Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           Text="参数已修改，点左侧按钮生效">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource HintText}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasPendingQWeatherChanges}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+
+            <!--  请求结果：成功绿色，失败红色  -->
+            <TextBlock Margin="2,0,0,14" TextWrapping="Wrap" Text="{Binding QweatherStatus}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource HintText}">
+                        <Setter Property="Foreground" Value="{DynamicResource MenuSecondaryForegroundBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding QweatherStatusIsError}" Value="True">
+                                <Setter Property="Foreground" Value="#E05252" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding QweatherStatusIsError}" Value="False">
+                                <Setter Property="Foreground" Value="#3FA45B" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding QweatherStatus}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
             <!--  未配置完整时的提示；配好了就自动隐藏  -->
             <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Margin="2,0,0,14"
-                       Text="※ 以上三项填齐后天气才会显示，否则顶栏显示「天气 未配置」。">
+                       Text="※ 以上三项填齐后点「应用并测试」，顶栏才会显示天气。">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource HintText}">
                         <Setter Property="Visibility" Value="Collapsed" />
