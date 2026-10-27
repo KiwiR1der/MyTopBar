@@ -83,17 +83,10 @@
                        VerticalOffset="6">
                     <Border Width="220"
                             Padding="6,4"
-                            Background="{DynamicResource MenuBackgroundBrush}"
+                            Background="{DynamicResource PopupGlassBrush}"
                             BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             CornerRadius="10">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="16"
-                                              Direction="270"
-                                              Opacity="0.28"
-                                              ShadowDepth="6"
-                                              Color="#000000" />
-                        </Border.Effect>
                         <StackPanel>
                             <Button Command="{Binding AboutThisPcCommand}"
                                     Content="关于本机"
@@ -189,18 +182,11 @@
                        VerticalOffset="6">
                     <Border MinWidth="248"
                             Padding="10,8"
-                            Background="{DynamicResource MenuBackgroundBrush}"
+                            Background="{DynamicResource PopupGlassBrush}"
                             BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             ClipToBounds="False"
                             CornerRadius="10">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="16"
-                                              Direction="270"
-                                              Opacity="0.28"
-                                              ShadowDepth="6"
-                                              Color="Black" />
-                        </Border.Effect>
                         <views:CalendarPopup />
                     </Border>
                 </Popup>
@@ -233,18 +219,11 @@
                        VerticalOffset="6">
                     <Border MinWidth="248"
                             Padding="10,8"
-                            Background="{DynamicResource MenuBackgroundBrush}"
+                            Background="{DynamicResource PopupGlassBrush}"
                             BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             ClipToBounds="False"
                             CornerRadius="10">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="16"
-                                              Direction="270"
-                                              Opacity="0.28"
-                                              ShadowDepth="6"
-                                              Color="Black" />
-                        </Border.Effect>
                         <views:AudioPopupView />
                     </Border>
                 </Popup>

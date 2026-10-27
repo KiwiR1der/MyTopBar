@@ -4,7 +4,8 @@
         Title="MyTopBar Settings"
         Width="560"
         Height="720"
-        Background="{DynamicResource MenuBackgroundBrush}"
+        AllowsTransparency="False"
+        Background="Transparent"
         Foreground="{DynamicResource MenuForegroundBrush}"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -33,7 +34,13 @@
         </Style>
     </Window.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <!--
+        根容器必须显式透明。
+        ScrollViewer 默认背景不透明，会整块盖住毛玻璃层，
+        表现为窗口纯黑（实测采样 RGB(0,0,0)）。
+        顶栏主窗口的 RootGrid 同理，那里也是显式写的 Background="Transparent"。
+    -->
+    <ScrollViewer Background="Transparent" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="20,16,20,20">
             <TextBlock FontFamily="{StaticResource AppFontMedium}"
                        FontSize="18"

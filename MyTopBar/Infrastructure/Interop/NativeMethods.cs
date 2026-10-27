@@ -83,6 +83,12 @@ namespace MyTopBar.Infrastructure.Interop
         /// <summary>窗口圆角偏好，Windows 11 起可用。</summary>
         public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
 
+        /// <summary>圆角偏好的取值。</summary>
+        public const int DWMWCP_DEFAULT = 0;
+        public const int DWMWCP_DONOTROUND = 1;
+        public const int DWMWCP_ROUND = 2;
+        public const int DWMWCP_ROUNDSMALL = 3;
+
         public const int DWMSBT_AUTO = 0;
         public const int DWMSBT_NONE = 1;
         public const int DWMSBT_MAINWINDOW = 2;      // Mica

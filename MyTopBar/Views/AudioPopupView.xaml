@@ -9,10 +9,11 @@
              mc:Ignorable="d">
     <Grid>
         <StackPanel Orientation="Horizontal">
-            <TextBlock Text="Audio: " />
+            <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}" Text="Audio: " />
             <Slider Width="200"
                     Maximum="1"
                     Minimum="0"
+                    Style="{StaticResource SettingsSlider}"
                     Value="{Binding Volume, Mode=TwoWay}" />
         </StackPanel>
     </Grid>

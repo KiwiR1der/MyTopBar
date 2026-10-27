@@ -51,9 +51,15 @@ namespace MyTopBar.Services
             SetBrush(r, "BarSecondaryForegroundBrush", isDark ? "#B3FFFFFF" : "#99000000");
             SetBrush(r, "BarSeparatorBrush", isDark ? "#33FFFFFF" : "#1F000000");
 
-            // 弹窗容器
+            // 弹窗容器：MenuBackgroundBrush 仍供设置窗口等不接受毛玻璃的地方使用
             SetBrush(r, "MenuBackgroundBrush", isDark ? "#FF2B2B2E" : "#FFF7F7F7");
             SetBrush(r, "MenuBorderBrush", isDark ? "#40FFFFFF" : "#26000000");
+
+            /*
+             * 弹窗的毛玻璃底色：必须接近透明，否则会盖住模糊层。
+             * 深色偏暗、浅色偏亮，让文字在复杂壁纸上仍有对比度。
+             */
+            SetBrush(r, "PopupGlassBrush", isDark ? "#24000000" : "#1FFFFFFF");
 
             // 弹窗内容
             SetBrush(r, "MenuForegroundBrush", isDark ? "#E6FFFFFF" : "#E6000000");

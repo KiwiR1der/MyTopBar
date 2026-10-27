@@ -25,6 +25,13 @@
 
     <SolidColorBrush x:Key="CalendarTodayForegroundBrush" Color="#FFFFFFFF" />
 
+    <!--
+        弹窗的毛玻璃底色。必须接近透明——不透明会把模糊层完全盖住。
+        保留极淡的一层只为让文字有个稳定的对比基底。
+        由 ThemeService.ApplyBrushes 按明暗覆盖。
+    -->
+    <SolidColorBrush x:Key="PopupGlassBrush" Color="#14FFFFFF" />
+
     <!--  输入控件（设置窗口）：WPF 默认模板不跟随主题，必须显式指定  -->
     <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFFFF" />
 
