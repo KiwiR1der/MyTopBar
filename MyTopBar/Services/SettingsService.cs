@@ -156,17 +156,6 @@ namespace MyTopBar.Services
             }
 
             /*
-             * Blur 已从设置项移除：Win11 的 SetWindowCompositionAttribute 只提供
-             * Acrylic 一种效果，Blur 与它在观感上完全相同，留着只会误导。
-             * 旧配置里若写着 Blur(1)，统一归一到 Acrylic(2)。
-             */
-            if (settings.Appearance.Material == MaterialKind.Blur)
-            {
-                settings.Appearance.Material = MaterialKind.Acrylic;
-                changed = true;
-            }
-
-            /*
              * 「跟随系统」主题已移除：RefreshFromSystem 一直没有调用点，
              * 该选项实际上只在启动时读一次注册表，名不副实。
              * 旧配置里 theme=0 表示跟随系统，这里归一到浅色（与原先的默认观感一致）。

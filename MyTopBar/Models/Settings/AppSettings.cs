@@ -30,11 +30,14 @@ namespace MyTopBar.Models.Settings
         Hitokoto = 1
     }
 
-    /// <summary>外观设置。</summary>
+    /// <summary>
+    /// 外观设置。
+    ///
+    /// 材质已固定为毛玻璃（ACCENT_ENABLE_BLURBEHIND），不再可配置，
+    /// 因此这里没有 Material 字段。
+    /// </summary>
     public sealed class AppearanceSettings
     {
-        public MaterialKind Material { get; set; } = MaterialKind.Mica;
-
         public ThemeMode Theme { get; set; } = ThemeMode.Light;
 
         /// <summary>顶栏高度（WPF DIP），28–40。</summary>

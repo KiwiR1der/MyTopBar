@@ -26,9 +26,6 @@ namespace MyTopBar.ViewModels
         private bool _loading = true;
 
         [ObservableProperty]
-        private MaterialOption _material;
-
-        [ObservableProperty]
         private ThemeOption _selectedTheme;
 
         [ObservableProperty]
@@ -103,15 +100,6 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private bool _hitokotoEnabled;
 
-        /// <summary>可用材质列表，带中文说明，供下拉框绑定。</summary>
-        public IReadOnlyList<MaterialOption> Materials { get; } =
-        [
-            new(MaterialKind.Mica, "Mica（云母，取壁纸配色）"),
-            new(MaterialKind.Acrylic, "Acrylic（亚克力，随背景模糊）"),
-            new(MaterialKind.MicaAlt, "Mica Alt（云母，对比更强）"),
-            new(MaterialKind.None, "None（纯色，不透明）")
-        ];
-
         /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
@@ -137,7 +125,6 @@ namespace MyTopBar.ViewModels
             _lyrics = lyrics;
 
             AppSettings current = settings.Current;
-            _material = Materials.FirstOrDefault(m => m.Kind == current.Appearance.Material) ?? Materials[0];
             _selectedTheme = ThemeModes.FirstOrDefault(t => t.Mode == current.Appearance.Theme) ?? ThemeModes[0];
             _barHeight = current.Appearance.BarHeight;
 
@@ -203,18 +190,6 @@ namespace MyTopBar.ViewModels
 
         /// <summary>设置变化时通知主窗口立即应用（无需重启）。</summary>
         public event EventHandler? SettingsApplied;
-
-        partial void OnMaterialChanged(MaterialOption value)
-        {
-            if (_loading || value is null)
-            {
-                return;
-            }
-
-            _settings.Current.Appearance.Material = value.Kind;
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
-        }
 
         partial void OnBarHeightChanged(double value)
         {
@@ -505,12 +480,6 @@ namespace MyTopBar.ViewModels
                 SettingsApplied?.Invoke(this, EventArgs.Empty);
             }
         }
-    }
-
-    /// <summary>材质下拉项：把枚举包装成中文可读文本。</summary>
-    public sealed record MaterialOption(MaterialKind Kind, string Display)
-    {
-        public override string ToString() => Display;
     }
 
     /// <summary>主题下拉项。</summary>

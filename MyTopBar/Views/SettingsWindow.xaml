@@ -44,14 +44,6 @@
             <TextBlock Style="{StaticResource SectionHeader}" Text="外观" />
 
             <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
-                <TextBlock Style="{StaticResource FieldLabel}" Text="材质" />
-                <ComboBox Width="300"
-                          ItemsSource="{Binding Materials}"
-                          SelectedItem="{Binding Material, Mode=TwoWay}"
-                          Style="{StaticResource SettingsComboBox}" />
-            </StackPanel>
-
-            <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="主题" />
                 <ComboBox Width="180"
                           ItemsSource="{Binding ThemeModes}"

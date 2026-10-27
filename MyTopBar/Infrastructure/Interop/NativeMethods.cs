@@ -137,6 +137,84 @@ namespace MyTopBar.Infrastructure.Interop
         [DllImport("user32.dll", PreserveSig = true)]
         public static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
 
+        /// <summary>
+        /// 应用毛玻璃（ACCENT_ENABLE_BLURBEHIND）。
+        ///
+        /// 只做高斯模糊，不加噪点、不叠调色，背景纹理仍然可见。
+        /// 与 ACRYLICBLURBEHIND 的区别就在这里——后者会额外叠一层色调，
+        /// 观感更像磨砂塑料而不是玻璃。
+        ///
+        /// 返回 true 表示 API 调用成功。
+        /// </summary>
+        public static bool ApplyBlurBehind(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var accent = new AccentPolicy
+            {
+                AccentState = ACCENT_ENABLE_BLURBEHIND,
+                AccentFlags = 0,
+                GradientColor = 0,
+            };
+
+            int size = Marshal.SizeOf<AccentPolicy>();
+            IntPtr buffer = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(accent, buffer, false);
+                var data = new WindowCompositionAttributeData
+                {
+                    Attribute = WCA_ACCENT_POLICY,
+                    Data = buffer,
+                    SizeOfData = size,
+                };
+                return SetWindowCompositionAttribute(hwnd, ref data) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        /// <summary>清除合成层（把 AccentState 设为 DISABLED）。</summary>
+        public static void ClearAccent(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            var accent = new AccentPolicy { AccentState = 0 };
+            int size = Marshal.SizeOf<AccentPolicy>();
+            IntPtr buffer = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(accent, buffer, false);
+                var data = new WindowCompositionAttributeData
+                {
+                    Attribute = WCA_ACCENT_POLICY,
+                    Data = buffer,
+                    SizeOfData = size,
+                };
+                SetWindowCompositionAttribute(hwnd, ref data);
+            }
+            catch
+            {
+                // 清除失败不影响后续操作。
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+
         #endregion
 
         #region 系统指标

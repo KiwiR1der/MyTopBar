@@ -1,39 +1,23 @@
 namespace MyTopBar.Infrastructure.Material
 {
-    /// <summary>顶栏可选的背景材质。</summary>
-    public enum MaterialKind
-    {
-        /// <summary>不透明纯色，不启用任何系统材质。</summary>
-        None = 0,
-
-        /// <summary>
-        /// Win10 经典毛玻璃（ACCENT_ENABLE_BLURBEHIND）。
-        /// Win11 上 SetWindowCompositionAttribute 只提供 Acrylic，
-        /// 效果与 <see cref="Acrylic"/> 相同，因此已从设置项中移除；
-        /// 该值仅保留用于兼容旧配置文件。
-        /// </summary>
-        Blur = 1,
-
-        /// <summary>亚克力（DWMSBT_TRANSIENTWINDOW），随下方内容模糊。</summary>
-        Acrylic = 2,
-
-        /// <summary>Mica（DWMSBT_MAINWINDOW），取壁纸配色，Windows 11 22H2+。</summary>
-        Mica = 3,
-
-        /// <summary>Mica Alt（DWMSBT_TABBEDWINDOW），对比更突出。</summary>
-        MicaAlt = 4
-    }
-
     /// <summary>
-    /// 材质应用结果。用于向设置界面如实回报「请求了什么、实际生效了什么」。
+    /// 顶栏背景材质。
+    ///
+    /// 现在只保留毛玻璃一种，不再可切换，因此没有枚举。
+    /// 选择毛玻璃的理由：
+    ///   - ACCENT_ENABLE_BLURBEHIND 只做高斯模糊，不加噪点、不叠色调，
+    ///     背景纹理仍然可见，观感是"透过磨砂玻璃看"
+    ///   - DWM 的 SystemBackdrop（Acrylic / Mica）在窗口长期未激活时会退化，
+    ///     而顶栏带 WS_EX_NOACTIVATE 永远不是活动窗口，实测 Acrylic 约 1 分钟后
+    ///     变成均匀灰块
+    ///   - BLURBEHIND 不受窗口活动状态影响
+    ///
+    /// 代价：该 API 在 Windows 11 上已被标记为不推荐，未来系统版本可能失效。
+    /// 若真失效，可退回 DWM SystemBackdrop 并接受退化，或改用自绘模糊。
     /// </summary>
-    public readonly record struct MaterialApplyResult(
-        MaterialKind Requested,
-        MaterialKind Applied,
-        bool UsedFallback,
-        string Detail)
+    public static class MaterialInfo
     {
-        public static MaterialApplyResult Failed(MaterialKind requested, string detail)
-            => new(requested, MaterialKind.None, true, detail);
+        /// <summary>当前使用的材质名称，供日志与诊断输出。</summary>
+        public const string Current = "Blur (ACCENT_ENABLE_BLURBEHIND)";
     }
 }

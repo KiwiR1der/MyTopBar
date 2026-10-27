@@ -9,7 +9,7 @@
 ## 特性
 
 - **工作区占位**：注册为 AppBar，不是普通悬浮窗，最大化窗口不会盖住顶栏
-- **多材质**：Mica / Mica Alt / Acrylic / 纯色，可在运行时切换，支持明暗模式
+- **毛玻璃背景**：只做高斯模糊（`ACCENT_ENABLE_BLURBEHIND`），不加噪点、不叠色调，背景纹理可见
 - **可插拔组件**：中区与右区各自独立装配，可启停、可拖动排序
 - **不抢焦点**：点击顶栏不会让当前窗口失焦，`WS_EX_NOACTIVATE` 实现
 - **配置持久化**：自动保存到 `%AppData%\MyTopBar\settings.json`
@@ -48,8 +48,10 @@
 ## 系统要求
 
 - Windows 10 1809 (build 17763) 或更高
-- Windows 11 22H2 (build 22621) 及以上才能使用原生 Mica / Acrylic
 - .NET 8 SDK（仅编译需要）
+
+> 毛玻璃走 `SetWindowCompositionAttribute`，Win10 1809 起可用，
+> 不依赖 Win11 的 SystemBackdrop API。
 
 ## 构建与运行
 
@@ -69,7 +71,6 @@ dotnet run --project MyTopBar
 ```jsonc
 {
   "appearance": {
-    "material": 3,      // 0=None 1=Blur(废弃) 2=Acrylic 3=Mica 4=MicaAlt
     "theme": 1,         // 1=浅色 2=深色
     "barHeight": 30     // 28-40
   },
@@ -157,35 +158,40 @@ X-QW-Api-Key: {ApiKey}
 - `TaskbarCreated` 广播（Explorer 重启后重新注册）
 - `WM_DPICHANGED` / `WM_DISPLAYCHANGE` 时按新 DPI 重算厚度
 
-### 材质实现
+### 毛玻璃实现
 
-材质交给 [FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) 处理，通过附加属性驱动：
+背景固定为毛玻璃，直接调用 Win32 API，不再依赖第三方材质库：
 
-```xml
-<fluent:WindowMaterial.Material>
-    <fluent:WindowMaterial x:Name="WindowMaterialConfig"
-                           CompositonColor="#4DF2F2F2"
-                           MaterialMode="Acrylic"
-                           UseWindowComposition="True" />
-</fluent:WindowMaterial.Material>
+```csharp
+SetWindowCompositionAttribute(hwnd,
+    Attribute = WCA_ACCENT_POLICY (19),
+    AccentState = ACCENT_ENABLE_BLURBEHIND (3))
 ```
 
-**关键点**：WPF 窗口要让 DWM 材质透出来，必须同时满足
+**为什么不用 DWM 的 SystemBackdrop（Mica / Acrylic）**：
 
-1. `AllowsTransparency="False"`（否则退化为 layered window，材质失效且 ClearType 变灰）
+| | 毛玻璃 BLURBEHIND | DWM Acrylic |
+|---|---|---|
+| 效果 | 纯高斯模糊，背景纹理可见 | 模糊 + 噪点 + 叠色调，偏灰白 |
+| 活动状态 | 不受影响 | **长期未激活会退化** |
+| 适用性 | Win10 1809+ | Win11 22H2+ |
+
+关键在第二行：顶栏带 `WS_EX_NOACTIVATE`，**永远不是活动窗口**，
+实测 DWM Acrylic 约 1 分钟后会退化成均匀灰块（`RGB(135,135,135)`，壁纸完全不透）。
+毛玻璃不受这个影响，多帧采样 90 秒颜色恒定。
+
+代价：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，未来系统版本可能失效。
+
+**关键点**：WPF 窗口要让模糊层透出来，必须同时满足
+
+1. `AllowsTransparency="False"`（否则退化为 layered window，模糊失效且 ClearType 变灰）
 2. `Background="Transparent"`
 3. 在窗口渲染后将 `CompositionTarget.BackgroundColor` 设为透明
-4. 客户区扩展到整个窗口
+4. 客户区扩展到整个窗口（`DwmExtendFrameIntoClientArea` 传 -1）
+5. 先把 DWM 的 `DWMWA_SYSTEMBACKDROP_TYPE` 复位成 `NONE`，
+   否则残留的原生材质会盖在合成层上面
 
-任一条缺失，屏幕上就会是一整条纯黑。
-
-**运行时切换材质的坑**：库的 `Apply()` 两条分支不对称——走系统背景时会把旧的
-合成层清掉，走合成路径时却**不更新** `DWMWA_SYSTEMBACKDROP_TYPE`。
-结果就是 Mica → Acrylic 之后 DWM 仍按 Mica 渲染，必须重启才看得到变化。
-代码里的做法是 Win11 上让 `UseWindowComposition` 恒为 `false`，只切 `MaterialMode`，
-让库每次都完整写入该属性；只有 Windows 10 才退回合成路径。
-赋值顺序也有讲究：`IsDarkMode → CompositonColor → UseWindowComposition → MaterialMode`，
-因为每个都是依赖属性，写一个就触发一次 `Apply()`。
+任一条缺失，屏幕上就会是一整条纯黑，或者看起来"什么都没变"。
 
 ### 前台窗口追踪
 
@@ -212,15 +218,13 @@ X-QW-Api-Key: {ApiKey}
 
 ## 已知限制
 
-- **Blur 材质**：Windows 11 已废弃 `ACCENT_ENABLE_BLURBEHIND`，效果与 Acrylic 相同，
-  已从设置项移除（旧配置里的 `material: 1` 自动归一到 Acrylic）
-- **Mica 与 Acrylic 观感不同**：Mica 走原生 SystemBackdrop，取壁纸配色、不透壁纸内容；
-  Acrylic 走系统背景模糊，会透出下方内容
+- **毛玻璃的兼容性风险**：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，
+  未来系统版本可能失效。若真失效，退回 DWM SystemBackdrop 是唯一现成替代，
+  但要接受它在非活动窗口下退化
 - **歌词匹配**：优先网易云（中文曲库覆盖好，用的是非公开接口，随时可能失效），
   回退 LRCLIB。纯音乐、小众本地曲目可能匹配不到；只有纯文本歌词时显示首行
 - **单显示器**：顶栏跟随窗口所在屏幕，未做多屏独立配置
 - **全屏应用**：未处理 `ABN_FULLSCREENAPP`，全屏视频/游戏时顶栏仍压在画面上
-- **切换音频设备**：未实现 `IMMNotificationClient`，插耳机或切蓝牙后音量数字不再跟随
 - **未实现开机自启**
 
 ## 项目结构
@@ -233,7 +237,7 @@ MyTopBar/
 ├── Infrastructure/
 │   ├── Common/      AppBarController（工作区占位）、PopupHost、AppLog
 │   ├── Interop/     Win32 P/Invoke 集中声明
-│   ├── Material/    材质枚举
+│   ├── Material/    材质说明
 │   └── Interfaces/  服务契约
 ├── Models/          数据模型与配置结构
 ├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话
@@ -250,9 +254,11 @@ MyTopBar/
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | `[ObservableProperty]` / `[RelayCommand]` 源生成器 |
 | [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入 |
 | [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
-| [FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) | 窗口材质 |
 
 字体使用 HarmonyOS Sans SC。
+
+> 材质不再依赖第三方库：毛玻璃直接调用 `SetWindowCompositionAttribute`，
+> 原先的 FluentWpfCore 已移除。
 
 ## 许可证
 

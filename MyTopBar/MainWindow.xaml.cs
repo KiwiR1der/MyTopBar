@@ -9,9 +9,6 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
-using MyTopBar.Infrastructure.Material;
-using FluentWpfCore.AttachedProperties;
-using FluentWpfCore.Interop;
 using MyTopBar.Services;
 using MyTopBar.ViewModels;
 using MyTopBar.Widgets;
@@ -85,20 +82,17 @@ namespace MyTopBar
             NativeMethods.MakeNonActivating(handle);
 
             _theme.Apply(_settings.Current.Appearance.Theme);
-            ApplyMaterial(_settings.Current.Appearance.Material, _theme.IsDark, handle);
+            ApplyBlurMaterial(_theme.IsDark, handle);
         }
 
         private void OnThemeChanged(object? sender, bool isDark)
         {
-            IntPtr handle = new WindowInteropHelper(this).Handle;
-            ApplyMaterial(_settings.Current.Appearance.Material, isDark, handle);
-
-            // 材质跟着明暗变了，根元素那层补色也必须同步重算，
-            // 否则深色下会残留浅色主题的白色半透明叠层。
-            ApplyRootBackground(_settings.Current.Appearance.Material, isDark);
+            // 毛玻璃本身不随明暗变化（它只是模糊背景），
+            // 但 DWM 的明暗标志要同步，边框/阴影颜色会跟着变。
+            ApplyBlurMaterial(isDark, new WindowInteropHelper(this).Handle);
         }
 
-        /// <summary>设置窗口改动后立即应用：材质、高度、组件启停。</summary>
+        /// <summary>设置窗口改动后立即应用：高度、组件启停。</summary>
         private void OnAppearanceChanged(object? sender, EventArgs e)
         {
             double height = Math.Clamp(_settings.Current.Appearance.BarHeight, 28, 40);
@@ -107,156 +101,50 @@ namespace MyTopBar
                 Height = height;
                 _appBarController.SetThickness(height);
             }
-
-            ApplyMaterial(
-                _settings.Current.Appearance.Material,
-                _theme.IsDark,
-                new WindowInteropHelper(this).Handle);
-
-            ApplyRootBackground(_settings.Current.Appearance.Material, _theme.IsDark);
         }
 
         /// <summary>
-        /// None 材质需要 WPF 自己铺不透明底色（否则透明合成会露黑）；
-        /// 其余材质必须让根元素保持透明，DWM 材质才能透出来。
+        /// 应用毛玻璃：清掉 DWM 的系统背景，改用
+        /// SetWindowCompositionAttribute(ACCENT_ENABLE_BLURBEHIND)。
+        ///
+        /// 材质固定为毛玻璃，不再支持切换。选它的原因：
+        ///   - 只做高斯模糊，不加噪点、不叠色调，背景纹理仍然可见
+        ///   - DWM 的 SystemBackdrop（Acrylic/Mica）在窗口长期未激活时会退化，
+        ///     而本窗口带 WS_EX_NOACTIVATE，永远不是活动窗口，
+        ///     实测 Acrylic 约 1 分钟后变成均匀灰块
+        ///   - BLURBEHIND 不受活动状态影响
         /// </summary>
-        private void ApplyRootBackground(MaterialKind kind, bool isDark)
+        private void ApplyBlurMaterial(bool isDark, IntPtr handle)
         {
-            if (kind == MaterialKind.None)
-            {
-                RootGrid.Background = new SolidColorBrush(isDark
-                    ? Color.FromRgb(0x20, 0x20, 0x20)
-                    : Color.FromRgb(0xF2, 0xF2, 0xF2));
-                return;
-            }
-
-            /*
-             * 材质由 DWM 自己绘制，这一层必须保持完全透明，
-             * 否则会把材质盖住——这正是「切了材质看不出区别」的另一半原因。
-             *
-             * 早期为了让原生 Acrylic 的观感更接近截图，这里叠过一层 32% 的浅灰
-             * （#52D0D0D2）。实测表明它会把深色下的白字压灰，而且和
-             * CompositonColor / IsDarkMode 叠加后色调不可控，已移除。
-             * 需要调整顶栏浓淡时，应该改 ApplyMaterial 里的 CompositonColor（合成路径）
-             * 或材料本身的 IsDarkMode，而不是在根元素上再糊一层。
-             */
-            RootGrid.Background = Brushes.Transparent;
-        }
-
-        /// <summary>
-        /// 应用窗口材质。
-        ///
-        /// 关键决策：在 Windows 11 上**不要**让 FluentWpfCore 走合成路径
-        /// （<c>UseWindowComposition</c> 恒为 false），只切 <c>MaterialMode</c>。
-        ///
-        /// 原因（实测验证，见 REVIEW.md「材质实测」）：库的 Apply() 有两条分支，
-        /// 走合成路径时只调 SetWindowCompositionAttribute，**不会**复位
-        /// DWMWA_SYSTEMBACKDROP_TYPE。于是 Mica -> Acrylic 之后 DWM 仍在按 Mica
-        /// 渲染，界面上毫无变化，必须重启（新窗口没有历史状态）才看得到。
-        ///
-        /// 而始终走系统背景路径时，Apply() 每次都完整地把
-        /// MaterialMode 写进 DWMWA_SYSTEMBACKDROP_TYPE，切换精确且可重复：
-        ///   Mica=2 / Acrylic=3 / MicaAlt=4 / None=1
-        ///
-        /// 只有 Windows 10（没有 SystemBackdrop API）才必须退回合成路径。
-        /// </summary>
-        private void ApplyMaterial(MaterialKind kind, bool isDark, IntPtr handle)
-        {
-            MaterialType target = kind switch
-            {
-                MaterialKind.Mica => MaterialType.Mica,
-                MaterialKind.MicaAlt => MaterialType.MicaAlt,
-                MaterialKind.Acrylic => MaterialType.Acrylic,
-                // 旧配置里的 Blur 在 Win11 上等同 Acrylic（合成 API 只有 Acrylic 一种）。
-                MaterialKind.Blur => MaterialType.Acrylic,
-                _ => MaterialType.None
-            };
-
-            // Win11 有能力用原生 SystemBackdrop；Win10 只能走旧的合成 API。
-            bool useComposition = !SupportsSystemBackdrop;
-
-            /*
-             * 这些都是 DependencyProperty，每次赋值都会立即触发 Apply()。
-             * 必须先定下"走哪条路径"，最后再设材质本身，
-             * 否则 Apply() 会先用旧路径跑一次再被纠正。
-             */
-            WindowMaterialConfig.IsDarkMode = isDark;
-
-            // 合成路径下用它给 Acrylic 着色；系统背景路径不使用这个值。
-            WindowMaterialConfig.CompositonColor = isDark
-                ? Color.FromArgb(0x40, 0x20, 0x20, 0x24)
-                : Color.FromArgb(0x40, 0xF2, 0xF2, 0xF2);
-
-            WindowMaterialConfig.UseWindowComposition = useComposition;
-            WindowMaterialConfig.MaterialMode = target;
-
-            /*
-             * 上报真实生效的材质，而不是把请求值原样回显。
-             *
-             * DWM 在个别系统版本上会忽略 DWMWA_SYSTEMBACKDROP_TYPE
-             * （例如 Win11 21H2 还没有这个属性，或组策略禁用了特效），
-             * 此时界面若显示"已应用 Mica"就是假的。
-             * 这里用 DwmGetWindowAttribute 回读一次，按实际值上报。
-             */
-            _viewModel.OnMaterialApplied(ReadBackMaterialResult(kind, handle));
-        }
-
-        /// <summary>
-        /// 回读 DWM 实际生效的系统背景材质，与请求值比对。
-        ///
-        /// DWMSBT 取值：NONE=1 / Mica=2 / Acrylic=3 / MicaAlt=4。
-        /// 读不到（老系统没有该属性）时按"请求即生效"处理，
-        /// 因为那种情况下走的是合成路径，无法用 DWM 属性验证。
-        /// </summary>
-        private static MaterialApplyResult ReadBackMaterialResult(MaterialKind requested, IntPtr handle)
-        {
-            if (handle == IntPtr.Zero || !SupportsSystemBackdrop)
-            {
-                return new MaterialApplyResult(requested, requested, false, "composition");
-            }
-
+            // 先关掉 DWM 原生背景，让合成层能显示出来。
             try
             {
-                int actual = 0;
-                int hr = NativeMethods.DwmGetWindowAttribute(
-                    handle,
-                    NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE,
-                    ref actual,
-                    sizeof(int));
-
-                if (hr != 0)
-                {
-                    return new MaterialApplyResult(requested, requested, false, $"dwm hr=0x{hr:X8}");
-                }
-
-                MaterialKind applied = actual switch
-                {
-                    NativeMethods.DWMSBT_NONE => MaterialKind.None,
-                    NativeMethods.DWMSBT_MAINWINDOW => MaterialKind.Mica,
-                    NativeMethods.DWMSBT_TRANSIENTWINDOW => MaterialKind.Acrylic,
-                    NativeMethods.DWMSBT_TABBEDWINDOW => MaterialKind.MicaAlt,
-                    _ => requested
-                };
-
-                bool fallback = applied != requested;
-                return new MaterialApplyResult(
-                    requested,
-                    applied,
-                    fallback,
-                    fallback ? $"DWM 实际为 {applied}（backdrop={actual}）" : $"dwm backdrop={actual}");
+                int none = NativeMethods.DWMSBT_NONE;
+                NativeMethods.DwmSetWindowAttribute(
+                    handle, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref none, sizeof(int));
             }
             catch (Exception ex)
             {
-                return new MaterialApplyResult(requested, requested, false, ex.GetType().Name);
+                AppLog.Error("毛玻璃：复位系统背景失败", ex);
+            }
+
+            // 明暗模式仍然要让 DWM 知道，窗口边框/阴影会跟着变。
+            try
+            {
+                int dark = isDark ? 1 : 0;
+                NativeMethods.DwmSetWindowAttribute(
+                    handle, NativeMethods.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("毛玻璃：设置明暗模式失败", ex);
+            }
+
+            if (!NativeMethods.ApplyBlurBehind(handle))
+            {
+                AppLog.Error("毛玻璃：SetWindowCompositionAttribute 调用失败");
             }
         }
-
-        /// <summary>
-        /// 当前系统是否支持 DWMWA_SYSTEMBACKDROP_TYPE（Windows 11 22H2 / build 22621 起）。
-        /// 不支持时必须退回 SetWindowCompositionAttribute 的旧路径。
-        /// </summary>
-        private static bool SupportsSystemBackdrop =>
-            Environment.OSVersion.Version.Build >= 22621;
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -276,8 +164,7 @@ namespace MyTopBar
             // （SourceInitialized 可能晚于 Loaded，导致这里读到过期的 _theme.IsDark）。
             _theme.Apply(_settings.Current.Appearance.Theme);
 
-            ApplyMaterial(_settings.Current.Appearance.Material, _theme.IsDark, handle);
-            ApplyRootBackground(_settings.Current.Appearance.Material, _theme.IsDark);
+            ApplyBlurMaterial(_theme.IsDark, handle);
         }
 
         private void OnClosed(object? sender, EventArgs e)

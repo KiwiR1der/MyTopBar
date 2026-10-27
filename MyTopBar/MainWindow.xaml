@@ -4,7 +4,6 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:MyTopBar"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:fluent="https://github.com/TwilightLemon/FluentWpfCore"
         xmlns:views="clr-namespace:MyTopBar.Views"
         Title="MyTopBar"
         Height="30"
@@ -22,15 +21,15 @@
         WindowStyle="None"
         mc:Ignorable="d">
 
-    <!--  材质由 DWM 提供，本层必须完全透明，否则会遮住 Mica/Acrylic  -->
-    <!--  材质交由 FluentWpfCore 管理（Acrylic / Mica / MicaAlt），可在运行时切换  -->
-    <fluent:WindowMaterial.Material>
-        <fluent:WindowMaterial x:Name="WindowMaterialConfig"
-                               CompositonColor="#4DF2F2F2"
-                               IsDarkMode="False"
-                               MaterialMode="Acrylic"
-                               UseWindowComposition="True" />
-    </fluent:WindowMaterial.Material>
+    <!--
+        材质固定为毛玻璃（ACCENT_ENABLE_BLURBEHIND），不再可切换。
+        由 MainWindow.ApplyBlurMaterial 直接调用 SetWindowCompositionAttribute 实现，
+        不再经过 FluentWpfCore 的 WindowMaterial 附加属性。
+
+        本层必须完全透明，否则 WPF 自己的背景会把毛玻璃盖住。
+        另外 CompositionTarget.BackgroundColor 也必须在 SourceInitialized
+        和 Loaded 两个时机各设一次（见 MainWindow.xaml.cs）。
+    -->
 
     <Grid x:Name="RootGrid" Background="Transparent">
         <!--

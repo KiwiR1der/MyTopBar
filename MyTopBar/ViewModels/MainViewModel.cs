@@ -35,11 +35,6 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private float _volume;
 
-        [ObservableProperty]
-        private MaterialApplyResult _lastMaterialResult;
-
-        [ObservableProperty]
-        private string _materialStatus = string.Empty;
         /// <summary>
         /// 中区实际渲染的组件集合。中区同一时刻最多一个组件：
         /// 有媒体播放时显示歌词，否则显示文本/一言，二者互斥。
@@ -269,15 +264,6 @@ namespace MyTopBar.ViewModels
                     lyrics.Start();
                     break;
             }
-        }
-
-        /// <summary>材质应用结果回传，供设置界面如实显示实际生效的材质。</summary>
-        public void OnMaterialApplied(MaterialApplyResult result)
-        {
-            LastMaterialResult = result;
-            MaterialStatus = result.UsedFallback
-                ? $"{result.Applied}（{result.Detail}）"
-                : result.Applied.ToString();
         }
 
         /// <summary>
