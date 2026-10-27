@@ -136,13 +136,84 @@
                          Text="{Binding QweatherApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
 
+            <!--  ==========  地点（GeoAPI 城市搜索）  ==========  -->
+            <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="地点" />
+                <TextBox Width="220"
+                         Style="{StaticResource SettingsTextBox}"
+                         Text="{Binding QweatherSearchKeyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <TextBox.InputBindings>
+                        <!--  回车即搜索  -->
+                        <KeyBinding Key="Return" Command="{Binding SearchCityCommand}" />
+                    </TextBox.InputBindings>
+                </TextBox>
+                <Button Margin="8,0,0,0"
+                        Padding="12,5"
+                        Command="{Binding SearchCityCommand}"
+                        Content="搜索"
+                        Cursor="Hand"
+                        FontFamily="{StaticResource AppFont}"
+                        FontSize="13" />
+            </StackPanel>
+
+            <!--  搜索结果；有结果时才显示，避免占位  -->
+            <ListBox x:Name="CityList"
+                     MaxHeight="150"
+                     Margin="0,0,0,6"
+                     DisplayMemberPath="Display"
+                     ItemsSource="{Binding QweatherSearchResults}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     SelectionChanged="OnCitySelectionChanged">
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
+                        <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+                        <Setter Property="FontSize" Value="13" />
+                        <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}" />
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <!--  没有搜索结果时不占位  -->
+                            <DataTrigger Binding="{Binding QweatherSearchResults.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.Style>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="8,4" />
+                        <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+
+            <!--  当前选中的地点 + 坐标只读展示  -->
             <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
-                <TextBlock Style="{StaticResource FieldLabel}" Text="纬度 / 经度" />
-                <TextBox Width="90"
+                <TextBlock Style="{StaticResource FieldLabel}" Text="当前地点" />
+                <TextBlock VerticalAlignment="Center"
+                           Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                           FontFamily="{StaticResource AppFont}"
+                           FontSize="13"
+                           Text="{Binding QweatherSelectedPlace}" />
+            </StackPanel>
+
+            <TextBlock Margin="112,0,0,8"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                       FontFamily="{StaticResource AppFont}"
+                       FontSize="12"
+                       TextWrapping="Wrap"
+                       Text="{Binding QweatherSearchStatus}" />
+
+            <!--  经纬度仍保留，供手动微调或直接填坐标  -->
+            <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="经纬度（自动填入）" />
+                <TextBox Width="80"
                          Style="{StaticResource SettingsTextBox}"
                          Text="{Binding QweatherLatitude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Style="{StaticResource HintText}" Text="/" />
-                <TextBox Width="90"
+                <TextBox Width="80"
                          Margin="8,0,0,0"
                          Style="{StaticResource SettingsTextBox}"
                          Text="{Binding QweatherLongitude, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

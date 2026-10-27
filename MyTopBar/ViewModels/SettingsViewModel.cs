@@ -70,6 +70,25 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private bool _qweatherStatusIsError;
 
+        /// <summary>城市搜索关键字。</summary>
+        [ObservableProperty]
+        private string _qweatherSearchKeyword = string.Empty;
+
+        /// <summary>城市搜索结果，供下拉列表选择。</summary>
+        public ObservableCollection<GeoLocation> QweatherSearchResults { get; } = new();
+
+        /// <summary>已选城市名，显示出来让用户确认选对了。</summary>
+        [ObservableProperty]
+        private string _qweatherSelectedPlace = "未选择地点";
+
+        /// <summary>城市搜索的状态提示（查询中 / 无结果 / 错误）。</summary>
+        [ObservableProperty]
+        private string _qweatherSearchStatus = string.Empty;
+
+        /// <summary>搜索是否进行中，用于禁用按钮与显示提示。</summary>
+        [ObservableProperty]
+        private bool _isQweatherSearching;
+
         [ObservableProperty]
         private bool _hitokotoEnabled;
 
@@ -117,6 +136,11 @@ namespace MyTopBar.ViewModels
             QweatherLatitude = qw.Latitude;
             QweatherLongitude = qw.Longitude;
             QweatherIntervalMinutes = qw.IntervalMinutes;
+
+            // 已保存过城市名就直接显示，否则退回显示坐标。
+            QweatherSelectedPlace = string.IsNullOrWhiteSpace(qw.PlaceName)
+                ? $"未选择地点（当前坐标 {qw.Latitude}, {qw.Longitude}）"
+                : qw.PlaceName;
 
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
 
@@ -262,6 +286,72 @@ namespace MyTopBar.ViewModels
         }
 
         /// <summary>
+        /// 按关键字搜索城市。用 GeoAPI 把城市名换成经纬度，
+        /// 免去手填坐标。
+        /// </summary>
+        [RelayCommand]
+        private async Task SearchCityAsync()
+        {
+            if (IsQweatherSearching)
+            {
+                return;
+            }
+
+            string keyword = (QweatherSearchKeyword ?? string.Empty).Trim();
+            if (keyword.Length == 0)
+            {
+                QweatherSearchStatus = "请输入城市名称，例如「杭州」「Tokyo」";
+                return;
+            }
+
+            IsQweatherSearching = true;
+            QweatherSearchStatus = "查询中…";
+            QweatherSearchResults.Clear();
+
+            try
+            {
+                GeoLookupResult result = await GeoLookup
+                    .SearchAsync(QweatherApiHost, QweatherApiKey, keyword, "zh")
+                    .ConfigureAwait(true);
+
+                if (!result.Ok)
+                {
+                    QweatherSearchStatus = result.Error;
+                    return;
+                }
+
+                foreach (GeoLocation location in result.Locations)
+                {
+                    QweatherSearchResults.Add(location);
+                }
+
+                QweatherSearchStatus = $"找到 {result.Locations.Count} 个结果，点击选择";
+            }
+            finally
+            {
+                IsQweatherSearching = false;
+            }
+        }
+
+        /// <summary>选中某个搜索结果：填回经纬度并记录名称。</summary>
+        [RelayCommand]
+        private void SelectCity(GeoLocation? location)
+        {
+            if (location is null)
+            {
+                return;
+            }
+
+            // GeoAPI 返回五位小数，天气接口要求最多两位，这里统一收敛。
+            QweatherLatitude = GeoLookup.FormatCoordinate(location.Latitude);
+            QweatherLongitude = GeoLookup.FormatCoordinate(location.Longitude);
+            QweatherSelectedPlace = location.Display;
+
+            QweatherSearchStatus = $"已选择 {location.Display}";
+            RefreshQWeatherPending();
+        }
+
+        /// <summary>
         /// 判断界面上的值是否与已生效配置不同。
         /// 逐字段比较而不是监听每个输入框，避免"删掉又打回去"这种操作被误判。
         /// </summary>
@@ -274,7 +364,9 @@ namespace MyTopBar.ViewModels
                 || !string.Equals((QweatherApiKey ?? string.Empty).Trim(), saved.ApiKey, StringComparison.Ordinal)
                 || !string.Equals((QweatherLatitude ?? string.Empty).Trim(), saved.Latitude, StringComparison.Ordinal)
                 || !string.Equals((QweatherLongitude ?? string.Empty).Trim(), saved.Longitude, StringComparison.Ordinal)
-                || (int)Math.Clamp(QweatherIntervalMinutes, 5, 240) != saved.IntervalMinutes;
+                || (int)Math.Clamp(QweatherIntervalMinutes, 5, 240) != saved.IntervalMinutes
+                || (!QweatherSelectedPlace.StartsWith("未选择地点")
+                    && !string.Equals(QweatherSelectedPlace, saved.PlaceName, StringComparison.Ordinal));
 
             HasPendingQWeatherChanges = pending;
             OnPropertyChanged(nameof(IsQWeatherConfigured));
@@ -308,6 +400,12 @@ namespace MyTopBar.ViewModels
             target.Latitude = (QweatherLatitude ?? string.Empty).Trim();
             target.Longitude = (QweatherLongitude ?? string.Empty).Trim();
             target.IntervalMinutes = (int)Math.Clamp(QweatherIntervalMinutes, 5, 240);
+
+            // 只有通过搜索选过地点才记住名字，手填坐标时保持原值。
+            if (QweatherSelectedPlace is { Length: > 0 } && !QweatherSelectedPlace.StartsWith("未选择地点"))
+            {
+                target.PlaceName = QweatherSelectedPlace;
+            }
 
             _settings.Save();
 

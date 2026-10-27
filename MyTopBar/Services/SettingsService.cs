@@ -18,6 +18,12 @@ namespace MyTopBar.Services
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        /// <summary>
+        /// 不带 BOM 的 UTF-8。读写配置都显式用它，
+        /// 避免跟随系统 ANSI 代码页导致中文变乱码。
+        /// </summary>
+        private static readonly System.Text.UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
         private readonly string _filePath;
         private readonly object _gate = new();
         private System.Threading.Timer? _debounceTimer;
@@ -69,7 +75,7 @@ namespace MyTopBar.Services
                     return CreateDefault();
                 }
 
-                string json = File.ReadAllText(_filePath);
+                string json = File.ReadAllText(_filePath, Utf8NoBom);
                 if (string.IsNullOrWhiteSpace(json))
                 {
                     return CreateDefault();
@@ -201,8 +207,16 @@ namespace MyTopBar.Services
                     json = JsonSerializer.Serialize(Current, SerializerOptions);
                 }
 
+                /*
+                 * 显式指定 UTF-8。
+                 *
+                 * 位置名、城市名都是中文，File.WriteAllText / ReadAllText 在
+                 * 不指定编码时会走系统默认（中文 Windows 上是 GBK 一类的 ANSI 代码页），
+                 * 中文写进去再读出来就变成乱码；更糟的是乱码字节可能撞上引号边界，
+                 * 把 JSON 结构破坏，导致整个配置文件无法解析、所有设置丢失。
+                 */
                 string temp = _filePath + ".tmp";
-                File.WriteAllText(temp, json);
+                File.WriteAllText(temp, json, Utf8NoBom);
                 File.Move(temp, _filePath, overwrite: true);
             }
             catch (Exception)

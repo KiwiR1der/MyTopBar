@@ -100,6 +100,12 @@ namespace MyTopBar.Models.Settings
         /// <summary>经度，十进制，最多两位小数。北京 116.41。</summary>
         public string Longitude { get; set; } = "116.41";
 
+        /// <summary>
+        /// 由 GeoAPI 选中的地点名称，仅用于界面显示和让用户确认选对了位置。
+        /// 天气请求只用经纬度，这个字段不参与请求。
+        /// </summary>
+        public string PlaceName { get; set; } = string.Empty;
+
         /// <summary>刷新间隔（分钟），5–240。</summary>
         public int IntervalMinutes { get; set; } = 30;
 
