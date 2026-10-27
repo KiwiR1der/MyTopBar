@@ -15,9 +15,12 @@
 - **配置持久化**：自动保存到 `%AppData%\MyTopBar\settings.json`
 - **设置窗口**：外观与组件改动即时生效，无需重启；天气参数点「应用并测试」后生效
 
-## 布局
+## 预览
 
 <img width="1918" height="28" alt="image" src="https://github.com/user-attachments/assets/25a1f0c8-8fd3-46d8-a36a-af8a139fed3a" />
+<img width="1919" height="1030" alt="image" src="https://github.com/user-attachments/assets/b20e241b-a42b-4f35-b80e-d2b1e11eb14b" />
+
+## 布局
 
 左右两列使用 `Auto` + `SharedSizeGroup` 自适应内容宽度（按配置最多约 490px），
 中区始终在屏幕正中。若两列宽度不等，中区会偏到一侧，所以两列被强制成同宽。
