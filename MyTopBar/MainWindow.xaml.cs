@@ -1,4 +1,5 @@
-
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -32,6 +33,10 @@ namespace MyTopBar
         private bool _isSortMode;
         private WidgetViewModelBase? _dragWidget;
 
+        /// <summary>排序模式期间的低级键盘钩子，只用于监听 Esc。</summary>
+        private IntPtr _escapeHook = IntPtr.Zero;
+        private NativeMethods.LowLevelKeyboardProc? _escapeHookProc;
+
         public MainWindow()
         {
             _viewModel = App.Current.Services.GetRequiredService<MainViewModel>();
@@ -51,6 +56,7 @@ namespace MyTopBar
 
             SourceInitialized += OnSourceInitialized;
             Loaded += OnLoaded;
+            Closed += OnClosed;
 
             _theme.ThemeChanged += OnThemeChanged;
             _viewModel.AppearanceChanged += OnAppearanceChanged;
@@ -68,6 +74,15 @@ namespace MyTopBar
                 // 关键：让 WPF 不绘制不透明背景，DWM 材质才能透出。
                 source.CompositionTarget.BackgroundColor = Colors.Transparent;
             }
+
+            /*
+             * 顶栏不能抢走前台窗口的焦点。
+             * macOS 的菜单栏点一下就点一下，用户的编辑器不会失焦；
+             * 这里靠 WS_EX_NOACTIVATE + ShowActivated="False" 达到同样效果。
+             *
+             * 顺带加 WS_EX_TOOLWINDOW，避免在 Alt+Tab 里出现一条 30px 的窗口。
+             */
+            NativeMethods.MakeNonActivating(handle);
 
             _theme.Apply(_settings.Current.Appearance.Theme);
             ApplyMaterial(_settings.Current.Appearance.Material, _theme.IsDark, handle);
@@ -210,8 +225,12 @@ namespace MyTopBar
         private void OnClosed(object? sender, EventArgs e)
         {
             _theme.ThemeChanged -= OnThemeChanged;
+            _viewModel.AppearanceChanged -= OnAppearanceChanged;
             _sortModeTimer.Stop();
             _sortModeTimer.Tick -= OnSortModeTimerTick;
+
+            // 全局钩子必须摘掉，否则进程退出前会一直挂着。
+            RemoveEscapeHook();
 
             SourceInitialized -= OnSourceInitialized;
             Loaded -= OnLoaded;
@@ -244,7 +263,12 @@ namespace MyTopBar
             RightItems.PreviewMouseMove += OnItemsPreviewMouseMove;
             RightItems.PreviewMouseLeftButtonUp += OnItemsPreviewMouseUp;
             RootGrid.PreviewMouseLeftButtonDown += OnRootMouseDown;
-            PreviewKeyDown += OnWindowKeyDown;
+
+            /*
+             * 这里不再挂 PreviewKeyDown。
+             * 窗口带 WS_EX_NOACTIVATE，永远拿不到键盘焦点，
+             * 所以 Esc 退出排序改用排序期间的低级键盘钩子（见 InstallEscapeHook）。
+             */
         }
 
         private void OnItemsPreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -304,6 +328,87 @@ namespace MyTopBar
             _sortModeTimer.Stop();
             _isSortMode = true;
             Cursor = Cursors.SizeWE;
+
+            /*
+             * 排序模式需要 Esc 退出，但窗口带 WS_EX_NOACTIVATE，收不到键盘，
+             * PreviewKeyDown 不会触发。
+             *
+             * 不能靠 SetForegroundWindow 抢焦点：NOACTIVATE 窗口从未被激活过，
+             * 系统的前台锁定规则会直接拒绝这个调用（实测 hwndActive 始终不变）。
+             * 所以改为在排序期间临时挂一个低级键盘钩子，只监听 Esc，
+             * 退出时立刻摘掉——既不需要焦点，也不影响用户其他按键。
+             */
+            InstallEscapeHook();
+        }
+
+        /// <summary>排序模式期间监听 Esc，不依赖窗口焦点。</summary>
+        private void InstallEscapeHook()
+        {
+            if (_escapeHook == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                _escapeHookProc = OnEscapeHookProc;
+                _escapeHook = NativeMethods.SetWindowsHookEx(
+                    NativeMethods.WH_KEYBOARD_LL,
+                    _escapeHookProc,
+                    IntPtr.Zero,
+                    0);
+
+                if (_escapeHook == IntPtr.Zero)
+                {
+                    AppLog.Error($"安装键盘钩子失败，Esc 将无法退出排序模式（error={Marshal.GetLastWin32Error()}）");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("安装键盘钩子异常", ex);
+            }
+        }
+
+        private void RemoveEscapeHook()
+        {
+            if (_escapeHook == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                NativeMethods.UnhookWindowsHookEx(_escapeHook);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("卸载键盘钩子异常", ex);
+            }
+            finally
+            {
+                _escapeHook = IntPtr.Zero;
+                _escapeHookProc = null;
+            }
+        }
+
+        private IntPtr OnEscapeHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            const int WM_KEYDOWN = 0x0100;
+            const int VK_ESCAPE = 0x1B;
+
+            if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+            {
+                int vk = Marshal.ReadInt32(lParam);
+                if (vk == VK_ESCAPE && _isSortMode)
+                {
+                    // 钩子回调运行在安装它的线程（UI 线程）上，
+                    // 但这里仍投递一次，避免在钩子内部改状态导致重入。
+                    Dispatcher.BeginInvoke(() => ExitSortMode());
+                    return (IntPtr)1;
+                }
+            }
+
+            return NativeMethods.CallNextHookEx(_escapeHook, nCode, wParam, lParam);
         }
 
         private void OnRootMouseDown(object sender, MouseButtonEventArgs e)
@@ -320,19 +425,14 @@ namespace MyTopBar
             }
         }
 
-        private void OnWindowKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape && _isSortMode)
-            {
-                ExitSortMode();
-            }
-        }
-
         private void ExitSortMode()
         {
             _isSortMode = false;
             _dragWidget = null;
             Cursor = Cursors.Arrow;
+
+            // 退出排序立刻摘钩子，不做无谓的全局键盘监听。
+            RemoveEscapeHook();
         }
 
         private static WidgetViewModelBase? ResolveWidget(DependencyObject? source)

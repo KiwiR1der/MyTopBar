@@ -12,6 +12,7 @@
         Background="Transparent"
         FontFamily="{StaticResource AppFont}"
         ResizeMode="NoResize"
+        ShowActivated="False"
         ShowInTaskbar="False"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
