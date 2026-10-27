@@ -149,14 +149,27 @@ namespace MyTopBar.ViewModels
 
             InitMediaSources(current.Lyrics.SourceAppId, lyrics);
 
-            foreach (Widgets.WidgetViewModelBase widget in registry.All)
+            /*
+             * 遍历所有插件（含未启用的），从注册表找已缓存的实例。
+             * 注册表现在只创建一次实例并缓存，Rebuild 不再销毁，
+             * 所以这里总能找到实例（除非插件构造失败）。
+             */
+            foreach (Widgets.IWidgetPlugin plugin in registry.AllPlugins)
             {
                 WidgetSettings? saved = current.Widgets.FirstOrDefault(
-                    w => string.Equals(w.Id, widget.Id, StringComparison.OrdinalIgnoreCase));
+                    w => string.Equals(w.Id, plugin.Id, StringComparison.OrdinalIgnoreCase));
                 bool enabled = saved?.Enabled ?? true;
-                widget.IsEnabled = enabled;
-                _widgetById[widget.Id] = widget;
-                Widgets.Add(new WidgetToggleItem(widget.Id, widget.DisplayName, enabled, OnWidgetToggled));
+
+                // 同步到运行时实例
+                Widgets.WidgetViewModelBase? widget = registry.All.FirstOrDefault(
+                    w => string.Equals(w.Id, plugin.Id, StringComparison.OrdinalIgnoreCase));
+                if (widget is not null)
+                {
+                    widget.IsEnabled = enabled;
+                    _widgetById[plugin.Id] = widget;
+                }
+
+                Widgets.Add(new WidgetToggleItem(plugin.Id, plugin.DisplayName, enabled, OnWidgetToggled));
             }
 
             // 构造完成，之后的属性变化才是用户操作，需要写回配置。

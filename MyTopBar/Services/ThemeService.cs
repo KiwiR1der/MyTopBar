@@ -49,7 +49,7 @@ namespace MyTopBar.Services
             // 顶栏组件
             SetBrush(r, "BarForegroundBrush", isDark ? "#FFFFFFFF" : "#E6000000");
             SetBrush(r, "BarSecondaryForegroundBrush", isDark ? "#B3FFFFFF" : "#99000000");
-            SetBrush(r, "BarSeparatorBrush", isDark ? "#33FFFFFF" : "#1F000000");
+            SetBrush(r, "BarSeparatorBrush", isDark ? "#33FFFFFF" : "#1A000000");
 
             // 弹窗容器：MenuBackgroundBrush 仍供设置窗口等不接受毛玻璃的地方使用
             SetBrush(r, "MenuBackgroundBrush", isDark ? "#FF2B2B2E" : "#FFF7F7F7");

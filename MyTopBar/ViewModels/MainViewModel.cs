@@ -53,13 +53,8 @@ namespace MyTopBar.ViewModels
             SettingsService settings,
             SystemMetricsService metrics,
             WidgetRegistry registry,
-            ClockWidgetViewModel clock,
             LyricsWidgetViewModel lyrics,
-            WeatherWidgetViewModel weather,
-            TextWidgetViewModel text,
-            CpuWidgetViewModel cpu,
-            MemoryWidgetViewModel memory,
-            NetworkWidgetViewModel network)
+            TextWidgetViewModel text)
         {
             _foregroundWindowService = foregroundWindowService;
             _powerService = powerService;
@@ -69,17 +64,12 @@ namespace MyTopBar.ViewModels
             _registry = registry;
             Settings = settings.Current;
 
-            // 中区只保留「歌词 / 文本」，二者互斥（同一时刻只显示一个，见 CenterWidgets 计算）
-            _registry.Add(lyrics);
-            _registry.Add(text);
-
-            // 右区默认顺序：网络 → CPU → 内存 → 天气 → 时钟（音量按钮固定在右区最右，见 XAML）
-            _registry.Add(network);
-            _registry.Add(cpu);
-            _registry.Add(memory);
-            _registry.Add(weather);
-            _registry.Add(clock);
-
+            /*
+             * 中区互斥逻辑需要歌词/文本组件的引用。
+             * 直接从 DI 注入（它们是单例），而不是从注册表查——
+             * 注册表按配置装配，被禁用的组件不在渲染集合里，
+             * 但中区互斥逻辑仍需要引用它们来判断 HasActiveMedia。
+             */
             _lyrics = lyrics;
             _text = text;
             _lyrics.PropertyChanged += OnLyricsPropertyChanged;
@@ -244,24 +234,40 @@ namespace MyTopBar.ViewModels
             RefreshCenterWidget();
         }
 
+        /// <summary>
+        /// 按插件 ID 启动组件。
+        /// 组件 VM 从 DataService 取数据，启动时只需传配置。
+        /// </summary>
         private void StartWidget(WidgetViewModelBase widget)
         {
-            switch (widget)
+            switch (widget.Id)
             {
-                case TextWidgetViewModel text:
-                    text.Configure(
-                        Settings.Api.Hitokoto.Enabled ? TextWidgetMode.Hitokoto : TextWidgetMode.Static,
-                        "MyTopBar",
-                        Settings.Api.Hitokoto.IntervalMinutes);
-                    text.Start();
+                case "text":
+                    if (widget is TextWidgetViewModel text)
+                    {
+                        text.Configure(
+                            Settings.Api.Hitokoto.Enabled ? TextWidgetMode.Hitokoto : TextWidgetMode.Static,
+                            "MyTopBar",
+                            Settings.Api.Hitokoto.IntervalMinutes);
+                        text.Start();
+                    }
                     break;
-                case WeatherWidgetViewModel weather:
-                    weather.Configure(Settings.Api.QWeather);
-                    weather.Start();
+                case "weather":
+                    if (widget is WeatherWidgetViewModel weather)
+                    {
+                        weather.Configure(Settings.Api.QWeather);
+                        weather.Start();
+                    }
                     break;
-                case LyricsWidgetViewModel lyrics:
-                    lyrics.SetSourceFilter(Settings.Lyrics.SourceAppId);
-                    lyrics.Start();
+                case "lyrics":
+                    if (widget is LyricsWidgetViewModel lyrics)
+                    {
+                        lyrics.SetSourceFilter(Settings.Lyrics.SourceAppId);
+                        lyrics.Start();
+                    }
+                    break;
+                case "clock":
+                    // 时钟 DataService 在构造时已 Start，无需额外配置。
                     break;
             }
         }

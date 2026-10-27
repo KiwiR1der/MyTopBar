@@ -14,11 +14,12 @@ namespace MyTopBar.Services
         double UploadBytesPerSecond);
     /// <summary>
     /// 单一定时器同时采样 CPU / 内存 / 网络，供右区组件共享。
+    /// 已接入 GlobalTickService：不再自建 DispatcherTimer，改为订阅全局 Tick。
     /// </summary>
     public sealed class SystemMetricsService : IDisposable
     {
-        private readonly Dispatcher _dispatcher;
-        private readonly DispatcherTimer _timer = new();
+        private readonly GlobalTickService _tick;
+        private IDisposable? _subscription;
         private readonly object _sync = new();
 
         private ulong _prevIdle;
@@ -36,46 +37,62 @@ namespace MyTopBar.Services
         /// <summary>采样间隔，单位毫秒。</summary>
         public int IntervalMs
         {
-            get => (int)_timer.Interval.TotalMilliseconds;
+            get => _intervalMs;
             set
             {
                 int clamped = Math.Clamp(value, 200, 10000);
-                _timer.Interval = TimeSpan.FromMilliseconds(clamped);
+                if (_intervalMs == clamped)
+                {
+                    return;
+                }
+
+                _intervalMs = clamped;
+
+                // 已在运行才重订阅；启动前的设置只改字段，
+                // 让 Start() 先建立基线再订阅，避免首帧出现 0%/100% 跳变。
+                if (_subscription is not null)
+                {
+                    Resubscribe();
+                }
             }
         }
+
+        private int _intervalMs = 1000;
 
         /// <summary>每次采样完成时触发，已在 UI 线程。</summary>
         public event Action<SystemMetricsSnapshot>? Updated;
 
         public SystemMetricsSnapshot Latest { get; private set; }
 
-        public SystemMetricsService(Dispatcher dispatcher)
+        public SystemMetricsService(GlobalTickService tick)
         {
-            _dispatcher = dispatcher;
-            _timer.Interval = TimeSpan.FromSeconds(1);
-            _timer.Tick += OnTick;
+            _tick = tick;
         }
 
         public void Start()
         {
-            if (_disposed || _timer.IsEnabled)
+            if (_disposed || _subscription is not null)
             {
                 return;
             }
 
             // 建立基线，避免首帧出现 100% 之类的跳变。
             Sample(emit: false);
-            _timer.Start();
+            Resubscribe();
         }
 
         public void Stop()
         {
-            _timer.Stop();
+            _subscription?.Dispose();
+            _subscription = null;
         }
 
-        private void OnTick(object? sender, EventArgs e)
+        private void Resubscribe()
         {
-            Sample(emit: true);
+            _subscription?.Dispose();
+            _subscription = _tick.Subscribe(
+                TimeSpan.FromMilliseconds(_intervalMs),
+                () => Sample(emit: true));
         }
 
         private void Sample(bool emit)
@@ -231,9 +248,8 @@ namespace MyTopBar.Services
                 return;
             }
 
-            _timer.Stop();
-            _timer.Tick -= OnTick;
             _disposed = true;
+            Stop();
         }
     }
 }

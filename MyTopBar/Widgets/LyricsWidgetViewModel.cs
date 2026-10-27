@@ -40,7 +40,8 @@ namespace MyTopBar.Widgets
 
         private readonly MediaSessionService _media;
         private readonly Dispatcher _dispatcher;
-        private readonly DispatcherTimer _ticker = new();
+        private readonly Services.GlobalTickService _tick;
+        private IDisposable? _tickSubscription;
 
         private IReadOnlyList<LyricLine> _lines = Array.Empty<LyricLine>();
         private string _loadedKey = string.Empty;
@@ -60,21 +61,19 @@ namespace MyTopBar.Widgets
 
         [ObservableProperty]
         private string _nextText = string.Empty;
-        public LyricsWidgetViewModel(MediaSessionService media, Dispatcher dispatcher)
+        public LyricsWidgetViewModel(MediaSessionService media, Dispatcher dispatcher, Services.GlobalTickService tick)
         {
             _media = media;
             _dispatcher = dispatcher;
-            _ticker.Interval = TimeSpan.FromMilliseconds(250);
-            _ticker.Tick += OnTick;
+            _tick = tick;
             _media.TrackChanged += OnTrackChanged;
         }
 
         public void Start()
         {
-            if (!_ticker.IsEnabled)
-            {
-                _ticker.Start();
-            }
+            _tickSubscription ??= _tick.Subscribe(
+                TimeSpan.FromMilliseconds(250),
+                () => RefreshFromClock(force: false));
 
             _ = _media.StartAsync();
         }
@@ -122,8 +121,7 @@ namespace MyTopBar.Widgets
         /// <summary>
         /// 按当前播放位置定位歌词行并刷新文本。
         /// force=true 时即使行号没变也强制刷新，用于切歌后立即出词。
-        private void OnTick(object? sender, EventArgs e) => RefreshFromClock(force: false);
-
+        /// </summary>
         private void RefreshFromClock(bool force)
         {
             if (_lines.Count == 0)
@@ -571,8 +569,8 @@ namespace MyTopBar.Widgets
 
         protected override void DisposeCore()
         {
-            _ticker.Stop();
-            _ticker.Tick -= OnTick;
+            _tickSubscription?.Dispose();
+            _tickSubscription = null;
             _media.TrackChanged -= OnTrackChanged;
         }
     }

@@ -53,7 +53,12 @@
 
     <SolidColorBrush x:Key="BarSecondaryForegroundBrush" Color="#99000000" />
 
-    <SolidColorBrush x:Key="BarSeparatorBrush" Color="#1F000000" />
+    <!--
+        分隔线：需要比前景色更淡但仍可辨识。
+        浅色模式 #1A000000（10% 黑）→ 在白色壁纸上有足够对比度
+        深色模式由 ThemeService.ApplyBrushes 覆盖为 #33FFFFFF（20% 白）
+    -->
+    <SolidColorBrush x:Key="BarSeparatorBrush" Color="#1A000000" />
 
     <Style TargetType="Window">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
