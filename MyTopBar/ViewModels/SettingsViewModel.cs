@@ -15,6 +15,12 @@ namespace MyTopBar.ViewModels
         private readonly SettingsService _settings;
         private readonly ThemeService _theme;
 
+        /// <summary>
+        /// 构造期间为 true。此时通过属性赋值只是为了把配置同步到界面，
+        /// 不应再反向写回配置、触发 SettingsApplied 或落盘。
+        /// </summary>
+        private bool _loading = true;
+
         [ObservableProperty]
         private MaterialOption _material;
 
@@ -25,7 +31,26 @@ namespace MyTopBar.ViewModels
         private double _barHeight;
 
         [ObservableProperty]
-        private string _qweatherKey = string.Empty;
+        private string _qweatherApiHost = string.Empty;
+
+        [ObservableProperty]
+        private string _qweatherApiKey = string.Empty;
+
+        [ObservableProperty]
+        private string _qweatherLatitude = "39.92";
+
+        [ObservableProperty]
+        private string _qweatherLongitude = "116.41";
+
+        [ObservableProperty]
+        private double _qweatherIntervalMinutes = 30;
+
+        /// <summary>和风天气配置是否完整，供界面提示用。</summary>
+        public bool IsQWeatherConfigured =>
+            !string.IsNullOrWhiteSpace(QweatherApiHost)
+            && !string.IsNullOrWhiteSpace(QweatherApiKey)
+            && !string.IsNullOrWhiteSpace(QweatherLatitude)
+            && !string.IsNullOrWhiteSpace(QweatherLongitude);
 
         [ObservableProperty]
         private bool _hitokotoEnabled;
@@ -62,7 +87,19 @@ namespace MyTopBar.ViewModels
             _material = Materials.FirstOrDefault(m => m.Kind == current.Appearance.Material) ?? Materials[0];
             _selectedTheme = ThemeModes.FirstOrDefault(t => t.Mode == current.Appearance.Theme) ?? ThemeModes[0];
             _barHeight = current.Appearance.BarHeight;
-            _qweatherKey = current.Api.QWeatherKey;
+
+            QWeatherSettings qw = current.Api.QWeather;
+            /*
+             * 通过属性赋值而不是字段，让 [ObservableProperty] 的 setter 触发
+             * PropertyChanged。窗口在 DataContext 设置之后才初始化控件，
+             * 直接写字段不会通知界面，文本框会显示为空。
+             */
+            QweatherApiHost = qw.ApiHost;
+            QweatherApiKey = qw.ApiKey;
+            QweatherLatitude = qw.Latitude;
+            QweatherLongitude = qw.Longitude;
+            QweatherIntervalMinutes = qw.IntervalMinutes;
+
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
 
             foreach (Widgets.WidgetViewModelBase widget in registry.All)
@@ -74,6 +111,9 @@ namespace MyTopBar.ViewModels
                 _widgetById[widget.Id] = widget;
                 Widgets.Add(new WidgetToggleItem(widget.Id, widget.DisplayName, enabled, OnWidgetToggled));
             }
+
+            // 构造完成，之后的属性变化才是用户操作，需要写回配置。
+            _loading = false;
         }
 
         /// <summary>组件开关：写回配置并通知顶栏重建。</summary>
@@ -106,7 +146,7 @@ namespace MyTopBar.ViewModels
 
         partial void OnMaterialChanged(MaterialOption value)
         {
-            if (value is null)
+            if (_loading || value is null)
             {
                 return;
             }
@@ -118,6 +158,11 @@ namespace MyTopBar.ViewModels
 
         partial void OnBarHeightChanged(double value)
         {
+            if (_loading)
+            {
+                return;
+            }
+
             _settings.Current.Appearance.BarHeight = Math.Clamp(value, 28, 40);
             _settings.Save();
             SettingsApplied?.Invoke(this, EventArgs.Empty);
@@ -125,7 +170,7 @@ namespace MyTopBar.ViewModels
 
         partial void OnSelectedThemeChanged(ThemeOption value)
         {
-            if (value is null)
+            if (_loading || value is null)
             {
                 return;
             }
@@ -135,14 +180,77 @@ namespace MyTopBar.ViewModels
             _settings.Save();
         }
 
-        partial void OnQweatherKeyChanged(string value)
+        partial void OnQweatherApiHostChanged(string value)
         {
-            _settings.Current.Api.QWeatherKey = value ?? string.Empty;
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Api.QWeather.ApiHost = (value ?? string.Empty).Trim();
+            OnPropertyChanged(nameof(IsQWeatherConfigured));
             _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        partial void OnQweatherApiKeyChanged(string value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Api.QWeather.ApiKey = (value ?? string.Empty).Trim();
+            OnPropertyChanged(nameof(IsQWeatherConfigured));
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        partial void OnQweatherLatitudeChanged(string value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Api.QWeather.Latitude = (value ?? string.Empty).Trim();
+            OnPropertyChanged(nameof(IsQWeatherConfigured));
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        partial void OnQweatherLongitudeChanged(string value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Api.QWeather.Longitude = (value ?? string.Empty).Trim();
+            OnPropertyChanged(nameof(IsQWeatherConfigured));
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        partial void OnQweatherIntervalMinutesChanged(double value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Api.QWeather.IntervalMinutes = (int)Math.Clamp(value, 5, 240);
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
         }
 
         partial void OnHitokotoEnabledChanged(bool value)
         {
+            if (_loading)
+            {
+                return;
+            }
+
             _settings.Current.Api.Hitokoto.Enabled = value;
             _settings.Save();
         }

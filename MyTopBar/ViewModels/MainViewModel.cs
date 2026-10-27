@@ -261,7 +261,7 @@ namespace MyTopBar.ViewModels
                     text.Start();
                     break;
                 case WeatherWidgetViewModel weather:
-                    weather.Configure(Settings.Api.QWeatherKey, "101010100", 10);
+                    weather.Configure(Settings.Api.QWeather);
                     weather.Start();
                     break;
                 case LyricsWidgetViewModel lyrics:

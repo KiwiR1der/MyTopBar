@@ -81,9 +81,35 @@ dotnet run --project MyTopBar
 
 也可以点 Apple 菜单里的「MyTopBar 设置…」用图形界面调整。
 
-### 天气 API Key
+### 和风天气配置
 
-前往[和风天气开发平台](https://dev.qweather.com/)申请免费 Key，填入设置窗口即可。天气组件的默认城市代码为 `101010100`（北京），可在配置的 `options` 中修改。
+使用和风天气**新版** API：
+
+```
+GET https://{ApiHost}/weather/v1/current/{latitude}/{longitude}?lang=zh
+X-QW-Api-Key: {ApiKey}
+```
+
+需要填三项，都能在[控制台](https://console.qweather.com)找到：
+
+| 配置 | 获取位置 | 说明 |
+|---|---|---|
+| API Host | 控制台 → 设置 → API Host | 形如 `h2a9cf3mhs.xy.qweatherapi.com`，每账号随机分配，也是认证的一部分 |
+| API Key | 控制台 → 项目管理 → 凭据 → 创建凭据 | 认证方式选 **API KEY** |
+| 经纬度 | 自定 | 新版按经纬度定位，最多两位小数。北京 `39.92` / `116.41` |
+
+> 旧版的 `devapi.qweather.com/v7/weather/now?key=` 已被官方列入停用计划
+> （公共域名 2026 年起逐步停止服务，API KEY 每日请求量 2027 年起受限），
+> 程序已迁移到新版接口，不再保留旧路径。
+
+认证方式说明：官方推荐 JWT（Ed25519 签名，需在本地保管私钥）。
+本程序使用 API KEY 请求头，理由是桌面应用把私钥存到 `settings.json` 里
+反而比一个可随时吊销的 Key 更危险。若后续需要 JWT，
+可在 `WeatherWidgetViewModel` 中把请求头换成
+`Authorization: Bearer {token}`，其余流程不变。
+
+旧配置中的 `api.qWeatherKey` 会在启动时自动迁移到
+`api.qWeather.apiKey`，但 **API Host 必须手动补填**——它是账号级随机值，无法推断。
 
 ## 技术要点
 

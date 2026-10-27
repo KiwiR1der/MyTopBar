@@ -102,9 +102,38 @@ namespace MyTopBar.Services
 
             settings.Appearance ??= new AppearanceSettings();
             settings.Api ??= new ApiSettings();
+            settings.Api.QWeather ??= new QWeatherSettings();
             settings.Api.Hitokoto ??= new HitokotoSettings();
             settings.Metrics ??= new MetricsSettings();
             settings.Widgets ??= new List<WidgetSettings>();
+
+            /*
+             * 和风天气从旧版公共域名 API 迁到新版独立 Host + 请求头认证。
+             *
+             * 旧配置只有一个 qWeatherKey 字符串；新版还需要 API Host 和经纬度。
+             * Key 直接搬运过来，Host 与坐标留空/用默认值——用户必须自己补 Host，
+             * 因为它是每个账号随机分配、无法猜测的，这也是新版的安全机制。
+             * 老 Key 搬运后清空，避免文件里留两份凭据。
+             */
+            if (!string.IsNullOrWhiteSpace(settings.Api.QWeatherKey))
+            {
+                if (string.IsNullOrWhiteSpace(settings.Api.QWeather.ApiKey))
+                {
+                    settings.Api.QWeather.ApiKey = settings.Api.QWeatherKey;
+                }
+
+                settings.Api.QWeatherKey = string.Empty;
+                changed = true;
+            }
+
+            if (settings.Api.QWeather.IntervalMinutes < 5)
+            {
+                settings.Api.QWeather.IntervalMinutes = 5;
+            }
+            else if (settings.Api.QWeather.IntervalMinutes > 240)
+            {
+                settings.Api.QWeather.IntervalMinutes = 240;
+            }
 
             if (double.IsNaN(settings.Appearance.BarHeight) || settings.Appearance.BarHeight < 24)
             {
