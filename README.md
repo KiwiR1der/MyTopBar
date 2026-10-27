@@ -17,8 +17,7 @@
 
 ## 布局
 
-<img width="1920" height="30" alt="image" src="https://github.com/user-attachments/assets/e7998b9b-2f9f-4d42-8976-2c75988916d6" />
-
+<img width="1918" height="28" alt="image" src="https://github.com/user-attachments/assets/25a1f0c8-8fd3-46d8-a36a-af8a139fed3a" />
 
 左右两列使用 `Auto` + `SharedSizeGroup` 自适应内容宽度（按配置最多约 490px），
 中区始终在屏幕正中。若两列宽度不等，中区会偏到一侧，所以两列被强制成同宽。
