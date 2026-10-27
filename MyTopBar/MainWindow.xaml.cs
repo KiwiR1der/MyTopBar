@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
+using MyTopBar.Infrastructure.Interop;
 using MyTopBar.Infrastructure.Material;
 using FluentWpfCore.AttachedProperties;
 using FluentWpfCore.Interop;
@@ -76,6 +77,10 @@ namespace MyTopBar
         {
             IntPtr handle = new WindowInteropHelper(this).Handle;
             ApplyMaterial(_settings.Current.Appearance.Material, isDark, handle);
+
+            // 材质跟着明暗变了，根元素那层补色也必须同步重算，
+            // 否则深色下会残留浅色主题的白色半透明叠层。
+            ApplyRootBackground(_settings.Current.Appearance.Material, isDark);
         }
 
         /// <summary>设置窗口改动后立即应用：材质、高度、组件启停。</summary>
@@ -110,35 +115,75 @@ namespace MyTopBar
                 return;
             }
 
-            // 实测：原生 Acrylic 深色底约 (84,84,84)，目标观感（用户截图）约 (137,137,145)。
-            // 叠一层约 32% 的中性浅灰补亮度差，保留 DWM 模糊与壁纸透色。
-            RootGrid.Background = isDark
-                ? new SolidColorBrush(Color.FromArgb(0x52, 0xD0, 0xD0, 0xD2))
-                : new SolidColorBrush(Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+            /*
+             * 材质由 DWM 自己绘制，这一层必须保持完全透明，
+             * 否则会把材质盖住——这正是「切了材质看不出区别」的另一半原因。
+             *
+             * 早期为了让原生 Acrylic 的观感更接近截图，这里叠过一层 32% 的浅灰
+             * （#52D0D0D2）。实测表明它会把深色下的白字压灰，而且和
+             * CompositonColor / IsDarkMode 叠加后色调不可控，已移除。
+             * 需要调整顶栏浓淡时，应该改 ApplyMaterial 里的 CompositonColor（合成路径）
+             * 或材料本身的 IsDarkMode，而不是在根元素上再糊一层。
+             */
+            RootGrid.Background = Brushes.Transparent;
         }
 
+        /// <summary>
+        /// 应用窗口材质。
+        ///
+        /// 关键决策：在 Windows 11 上**不要**让 FluentWpfCore 走合成路径
+        /// （<c>UseWindowComposition</c> 恒为 false），只切 <c>MaterialMode</c>。
+        ///
+        /// 原因（实测验证，见 REVIEW.md「材质实测」）：库的 Apply() 有两条分支，
+        /// 走合成路径时只调 SetWindowCompositionAttribute，**不会**复位
+        /// DWMWA_SYSTEMBACKDROP_TYPE。于是 Mica -> Acrylic 之后 DWM 仍在按 Mica
+        /// 渲染，界面上毫无变化，必须重启（新窗口没有历史状态）才看得到。
+        ///
+        /// 而始终走系统背景路径时，Apply() 每次都完整地把
+        /// MaterialMode 写进 DWMWA_SYSTEMBACKDROP_TYPE，切换精确且可重复：
+        ///   Mica=2 / Acrylic=3 / MicaAlt=4 / None=1
+        ///
+        /// 只有 Windows 10（没有 SystemBackdrop API）才必须退回合成路径。
+        /// </summary>
         private void ApplyMaterial(MaterialKind kind, bool isDark, IntPtr handle)
         {
             MaterialType target = kind switch
             {
                 MaterialKind.Mica => MaterialType.Mica,
+                MaterialKind.MicaAlt => MaterialType.MicaAlt,
                 MaterialKind.Acrylic => MaterialType.Acrylic,
+                // 旧配置里的 Blur 在 Win11 上等同 Acrylic（合成 API 只有 Acrylic 一种）。
                 MaterialKind.Blur => MaterialType.Acrylic,
                 _ => MaterialType.None
             };
 
-            WindowMaterialConfig.MaterialMode = target;
-            WindowMaterialConfig.IsDarkMode = isDark;
-            // Mica 走原生 SystemBackdrop（更接近系统观感）；Acrylic/Blur 走合成路径以透出壁纸。
-            WindowMaterialConfig.UseWindowComposition = kind != MaterialKind.Mica;
+            // Win11 有能力用原生 SystemBackdrop；Win10 只能走旧的合成 API。
+            bool useComposition = !SupportsSystemBackdrop;
 
-            // 顶层透明窗口用 Composition 才能透出壁纸；alpha 控制浓度。
+            /*
+             * 这些都是 DependencyProperty，每次赋值都会立即触发 Apply()。
+             * 必须先定下"走哪条路径"，最后再设材质本身，
+             * 否则 Apply() 会先用旧路径跑一次再被纠正。
+             */
+            WindowMaterialConfig.IsDarkMode = isDark;
+
+            // 合成路径下用它给 Acrylic 着色；系统背景路径不使用这个值。
             WindowMaterialConfig.CompositonColor = isDark
                 ? Color.FromArgb(0x40, 0x20, 0x20, 0x24)
                 : Color.FromArgb(0x40, 0xF2, 0xF2, 0xF2);
 
+            WindowMaterialConfig.UseWindowComposition = useComposition;
+            WindowMaterialConfig.MaterialMode = target;
+
             _viewModel.OnMaterialApplied(new MaterialApplyResult(kind, kind, false, "fluentwpfcore"));
         }
+
+        /// <summary>
+        /// 当前系统是否支持 DWMWA_SYSTEMBACKDROP_TYPE（Windows 11 22H2 / build 22621 起）。
+        /// 不支持时必须退回 SetWindowCompositionAttribute 的旧路径。
+        /// </summary>
+        private static bool SupportsSystemBackdrop =>
+            Environment.OSVersion.Version.Build >= 22621;
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
@@ -297,6 +342,19 @@ namespace MyTopBar
                 if (source is FrameworkElement { DataContext: WidgetViewModelBase widget })
                 {
                     return widget;
+                }
+
+                /*
+                 * OriginalSource 可能是 Run 这类 ContentElement，对它们调用
+                 * VisualTreeHelper.GetParent 会抛 InvalidOperationException。
+                 * 先尝试 ContentOperations 拿到它所在的 FrameworkContentElement 的父级，
+                 * 再退化成视觉树遍历。
+                 */
+                if (source is ContentElement contentElement)
+                {
+                    source = ContentOperations.GetParent(contentElement)
+                        ?? (contentElement as FrameworkContentElement)?.Parent;
+                    continue;
                 }
 
                 source = VisualTreeHelper.GetParent(source);

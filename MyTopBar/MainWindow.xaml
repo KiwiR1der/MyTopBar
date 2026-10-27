@@ -32,16 +32,25 @@
     </fluent:WindowMaterial.Material>
 
     <Grid x:Name="RootGrid" Background="Transparent">
-        <Grid Margin="12,0">
+        <!--
+            IsSharedSizeScope + 两列同用 SharedSizeGroup：
+            左右两列都按 Auto 取内容宽度，但会被强制成**二者中较大的那个**。
+            这样既保证内容不被裁掉（原来固定 320px，右区实测要 ~490px），
+            又让中区在屏幕上真正居中（若左右宽度不等，中区会偏到一侧）。
+        -->
+        <Grid Margin="12,0" Grid.IsSharedSizeScope="True">
             <Grid.ColumnDefinitions>
-                <!--  左右两侧固定宽度，中区占剩余空间并居中  -->
-                <ColumnDefinition Width="320" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="BarSide" />
+                <!--  MinWidth 放在列上才有效；放在子元素上不会让 * 列保留空间  -->
+                <ColumnDefinition Width="*" MinWidth="160" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="BarSide" />
             </Grid.ColumnDefinitions>
 
             <!--  左区：Apple 菜单 + 当前活动应用  -->
-            <StackPanel Grid.Column="0" VerticalAlignment="Center" Orientation="Horizontal">
+            <StackPanel Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
                 <Button x:Name="AppleButton"
                         Click="AppleButton_Click"
                         Style="{StaticResource AppleMenuButton}">
@@ -74,8 +83,8 @@
                        VerticalOffset="6">
                     <Border Width="220"
                             Padding="6,4"
-                            Background="#F7F7F7"
-                            BorderBrush="#33000000"
+                            Background="{DynamicResource MenuBackgroundBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             CornerRadius="10">
                         <Border.Effect>
@@ -115,6 +124,10 @@
             </StackPanel>
 
             <!--  中区：歌词 / 天气 / 时钟 / 文本  -->
+            <!--
+                中区：歌词 / 天气 / 时钟 / 文本。
+                留一点最小宽度，屏幕极窄时优先保住中区可读性。
+            -->
             <StackPanel x:Name="CenterPanel"
                         Grid.Column="1"
                         HorizontalAlignment="Center"
@@ -139,7 +152,11 @@
             </StackPanel>
 
             <!--  右区：音量 + CPU / 内存 / 网络  -->
-            <StackPanel x:Name="RightPanel" Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+            <StackPanel x:Name="RightPanel"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
                 <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -172,8 +189,8 @@
                        VerticalOffset="6">
                     <Border MinWidth="248"
                             Padding="10,8"
-                            Background="#F7F7F7"
-                            BorderBrush="#33000000"
+                            Background="{DynamicResource MenuBackgroundBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             ClipToBounds="False"
                             CornerRadius="10">
@@ -182,7 +199,7 @@
                                               Direction="270"
                                               Opacity="0.28"
                                               ShadowDepth="6"
-                                              Color="#000000" />
+                                              Color="Black" />
                         </Border.Effect>
                         <views:CalendarPopup />
                     </Border>
@@ -216,8 +233,8 @@
                        VerticalOffset="6">
                     <Border MinWidth="248"
                             Padding="10,8"
-                            Background="#F7F7F7"
-                            BorderBrush="#33000000"
+                            Background="{DynamicResource MenuBackgroundBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
                             BorderThickness="1"
                             ClipToBounds="False"
                             CornerRadius="10">
@@ -226,7 +243,7 @@
                                               Direction="270"
                                               Opacity="0.28"
                                               ShadowDepth="6"
-                                              Color="#000000" />
+                                              Color="Black" />
                         </Border.Effect>
                         <views:AudioPopupView />
                     </Border>

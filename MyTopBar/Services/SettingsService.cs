@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models.Settings;
 
 namespace MyTopBar.Services
@@ -94,6 +95,16 @@ namespace MyTopBar.Services
             if (settings.Metrics.IntervalMs < 250)
             {
                 settings.Metrics.IntervalMs = 250;
+            }
+
+            /*
+             * Blur 已从设置项移除：Win11 的 SetWindowCompositionAttribute 只提供
+             * Acrylic 一种效果，Blur 与它在观感上完全相同，留着只会误导。
+             * 旧配置里若写着 Blur(1)，统一归一到 Acrylic(2)。
+             */
+            if (settings.Appearance.Material == MaterialKind.Blur)
+            {
+                settings.Appearance.Material = MaterialKind.Acrylic;
             }
 
             return settings;

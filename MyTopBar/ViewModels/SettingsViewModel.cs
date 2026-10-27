@@ -33,9 +33,9 @@ namespace MyTopBar.ViewModels
         /// <summary>可用材质列表，带中文说明，供下拉框绑定。</summary>
         public IReadOnlyList<MaterialOption> Materials { get; } =
         [
-            new(MaterialKind.Mica, "Mica（云母，Win11 推荐）"),
-            new(MaterialKind.Acrylic, "Acrylic（亚克力磨砂）"),
-            new(MaterialKind.Blur, "Blur（经典模糊，Win11 会回退 Acrylic）"),
+            new(MaterialKind.Mica, "Mica（云母，取壁纸配色）"),
+            new(MaterialKind.Acrylic, "Acrylic（亚克力，随背景模糊）"),
+            new(MaterialKind.MicaAlt, "Mica Alt（云母，对比更强）"),
             new(MaterialKind.None, "None（纯色，不透明）")
         ];
 
@@ -49,6 +49,11 @@ namespace MyTopBar.ViewModels
 
         /// <summary>组件开关列表。</summary>
         public ObservableCollection<WidgetToggleItem> Widgets { get; } = new();
+
+        /// <summary>Id → 组件实例，用于把开关状态同步到运行中的对象。</summary>
+        private readonly Dictionary<string, Widgets.WidgetViewModelBase> _widgetById =
+            new(StringComparer.OrdinalIgnoreCase);
+
         public SettingsViewModel(SettingsService settings, ThemeService theme, Widgets.WidgetRegistry registry)
         {
             _settings = settings;
@@ -67,6 +72,7 @@ namespace MyTopBar.ViewModels
                     w => string.Equals(w.Id, widget.Id, StringComparison.OrdinalIgnoreCase));
                 bool enabled = saved?.Enabled ?? true;
                 widget.IsEnabled = enabled;
+                _widgetById[widget.Id] = widget;
                 Widgets.Add(new WidgetToggleItem(widget.Id, widget.DisplayName, enabled, OnWidgetToggled));
             }
         }
@@ -74,6 +80,13 @@ namespace MyTopBar.ViewModels
         /// <summary>组件开关：写回配置并通知顶栏重建。</summary>
         private void OnWidgetToggled(string id, bool enabled)
         {
+            // 运行时对象必须同步，否则 PersistWidgetOrder 读到的仍是旧状态，
+            // 会把刚被关掉的组件又写成启用。
+            if (_widgetById.TryGetValue(id, out Widgets.WidgetViewModelBase? widget))
+            {
+                widget.IsEnabled = enabled;
+            }
+
             WidgetSettings? saved = _settings.Current.Widgets.FirstOrDefault(
                 w => string.Equals(w.Id, id, StringComparison.OrdinalIgnoreCase));
             if (saved is null)

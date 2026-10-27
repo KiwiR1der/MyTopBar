@@ -32,6 +32,13 @@ namespace MyTopBar.Services.Media
                 return;
             }
 
+            // 幂等：Start() 会在每次应用设置时被重复调用，
+            // 再 RequestAsync 一次会新建 manager 并叠加事件订阅（旧的不解绑）。
+            if (_manager is not null)
+            {
+                return;
+            }
+
             try
             {
                 _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();

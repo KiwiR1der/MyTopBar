@@ -1,4 +1,4 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using System.Text.Json;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -32,7 +32,12 @@ namespace MyTopBar.Widgets
         {
             _http = http;
             _dispatcher = dispatcher;
+            // 只在这里挂一次。Start() 会在每次应用设置时被重复调用，
+            // 若在 Start() 里 += 就会叠加出多个 Tick 处理器，请求数成倍增长。
+            _timer.Tick += OnTimerTick;
         }
+
+        private void OnTimerTick(object? sender, EventArgs e) => _ = RefreshAsync();
 
         public void Configure(TextWidgetMode mode, string staticText, int intervalMinutes)
         {
@@ -46,17 +51,24 @@ namespace MyTopBar.Widgets
         public int IntervalMinutes { get; private set; } = 30;
         private readonly DispatcherTimer _timer = new();
 
-        /// <summary>启动刷新循环。静态模式只设置一次文本。</summary>
+        /// <summary>启动刷新循环。静态模式只设置一次文本。可重复调用。</summary>
         public void Start()
         {
             if (Mode == TextWidgetMode.Static)
             {
+                _timer.Stop();
                 Text = string.IsNullOrWhiteSpace(StaticText) ? "MyTopBar" : StaticText;
                 return;
             }
 
             _timer.Interval = TimeSpan.FromMinutes(IntervalMinutes);
-            _timer.Tick += (_, _) => _ = RefreshAsync();
+            if (_timer.IsEnabled)
+            {
+                // 已在运行：只刷新一次内容，不重启计时器，避免改设置时打断节奏。
+                _ = RefreshAsync();
+                return;
+            }
+
             _timer.Start();
             _ = RefreshAsync();
         }

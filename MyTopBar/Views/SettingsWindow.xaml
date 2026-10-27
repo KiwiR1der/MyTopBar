@@ -2,64 +2,104 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MyTopBar Settings"
-        Width="540" Height="600"
+        Width="540"
+        Height="600"
         Background="{DynamicResource MenuBackgroundBrush}"
+        Foreground="{DynamicResource MenuForegroundBrush}"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <!--  设置窗口里重复出现的小标题 / 标签，统一收口  -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+            <Setter Property="Margin" Value="0,14,0,8" />
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Width" Value="110" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+        </Style>
+
+        <Style x:Key="HintText" TargetType="TextBlock">
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuSecondaryForegroundBrush}" />
+        </Style>
+    </Window.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20">
-            <TextBlock Text="设置" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,14" />
+        <StackPanel Margin="20,16,20,20">
+            <TextBlock FontFamily="{StaticResource AppFontMedium}"
+                       FontSize="18"
+                       Foreground="{DynamicResource MenuForegroundBrush}"
+                       Text="设置" />
 
-            <TextBlock Text="外观" FontWeight="SemiBold" Margin="0,6,0,8" />
+            <!--  ==========  外观  ==========  -->
+            <TextBlock Style="{StaticResource SectionHeader}" Text="外观" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="材质" Width="110" VerticalAlignment="Center" />
+            <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="材质" />
                 <ComboBox Width="300"
                           ItemsSource="{Binding Materials}"
-                          SelectedItem="{Binding Material, Mode=TwoWay}" />
+                          SelectedItem="{Binding Material, Mode=TwoWay}"
+                          Style="{StaticResource SettingsComboBox}" />
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="主题" Width="110" VerticalAlignment="Center" />
+            <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="主题" />
                 <ComboBox Width="180"
                           ItemsSource="{Binding ThemeModes}"
-                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" />
+                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                          Style="{StaticResource SettingsComboBox}" />
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                <TextBlock Text="顶栏高度" Width="110" VerticalAlignment="Center" />
+            <StackPanel Margin="0,0,0,16" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="顶栏高度" />
                 <Slider Width="180"
+                        VerticalAlignment="Center"
+                        IsSnapToTickEnabled="True"
                         Maximum="40"
                         Minimum="28"
-                        IsSnapToTickEnabled="True"
+                        Style="{StaticResource SettingsSlider}"
                         TickFrequency="1"
-                        VerticalAlignment="Center"
                         Value="{Binding BarHeight, Mode=TwoWay}" />
-                <TextBlock Margin="8,0,0,0"
-                           VerticalAlignment="Center"
-                           Text="{Binding BarHeight, StringFormat={}{0:0}px}" />
+                <TextBlock Style="{StaticResource HintText}" Text="{Binding BarHeight, StringFormat={}{0:0}px}" />
             </StackPanel>
 
-            <TextBlock Text="组件" FontWeight="SemiBold" Margin="0,6,0,8" />
+            <!--  ==========  组件  ==========  -->
+            <TextBlock Style="{StaticResource SectionHeader}" Text="组件" />
 
             <ItemsControl ItemsSource="{Binding Widgets}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <CheckBox Margin="0,0,0,4"
+                        <CheckBox Margin="2,0,0,6"
                                   Content="{Binding DisplayName}"
-                                  IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                  IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  Style="{StaticResource SettingsCheckBox}" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <TextBlock Text="API" FontWeight="SemiBold" Margin="0,14,0,8" />
+            <!--  ==========  API  ==========  -->
+            <TextBlock Style="{StaticResource SectionHeader}" Text="API" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="QWeather Key" Width="110" VerticalAlignment="Center" />
-                <TextBox Width="240" Text="{Binding QweatherKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <StackPanel Margin="0,0,0,10" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="QWeather Key" />
+                <TextBox Width="240"
+                         Style="{StaticResource SettingsTextBox}"
+                         Text="{Binding QweatherKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
 
-            <CheckBox Content="Enable Hitokoto"
-                      IsChecked="{Binding HitokotoEnabled, Mode=TwoWay}" />
+            <CheckBox Margin="2,0,0,0"
+                      Content="Enable Hitokoto"
+                      IsChecked="{Binding HitokotoEnabled, Mode=TwoWay}"
+                      Style="{StaticResource SettingsCheckBox}" />
         </StackPanel>
     </ScrollViewer>
 </Window>

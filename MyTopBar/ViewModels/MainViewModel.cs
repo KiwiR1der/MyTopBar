@@ -230,14 +230,16 @@ namespace MyTopBar.ViewModels
             RefreshCenterWidget();
         }
 
-        /// <summary>按配置重新装配组件。</summary>
+        /// <summary>
+        /// 按配置重新装配组件。
+        ///
+        /// 注意：这里**不能** Dispose 组件。这些组件是单例，数据管道（定时器、事件订阅）
+        /// 在构造函数里建立，一旦 Dispose 就再也不会恢复——表现为改组件的开关后
+        /// 时钟停走、CPU/内存/网络数值定格。启用状态由 <see cref="WidgetRegistry.Rebuild"/>
+        /// 决定谁进入渲染集合，组件本身不需要销毁。
+        /// </summary>
         public void ReloadWidgets()
         {
-            foreach (WidgetViewModelBase widget in _registry.All)
-            {
-                widget.Dispose();
-            }
-
             _registry.Rebuild(Settings.Widgets);
             foreach (WidgetViewModelBase widget in _registry.Center.Concat(_registry.Right))
             {
@@ -277,15 +279,40 @@ namespace MyTopBar.ViewModels
                 : result.Applied.ToString();
         }
 
-        /// <summary>拖动排序后把当前顺序写回配置并落盘。</summary>
+        /// <summary>
+        /// 拖动排序后把当前顺序写回配置并落盘。
+        ///
+        /// 以 <see cref="WidgetRegistry.All"/> 为基准而不是当前渲染集合：
+        /// 被停用的组件不在 Center/Right 里，若只写回渲染集合就会把它们的配置条目抹掉，
+        /// 而「不在配置里」的组件会被 <see cref="WidgetRegistry.Rebuild"/> 视为默认启用，
+        /// 结果就是关掉的组件在拖动排序后自己回来了。
+        /// 原有的 Options 也要原样保留。
+        /// </summary>
         public void PersistWidgetOrder()
         {
-            Settings.Widgets.Clear();
             int order = 0;
-            foreach (WidgetViewModelBase w in _registry.Center.Concat(_registry.Right))
+            var kept = new List<WidgetSettings>();
+
+            foreach (WidgetViewModelBase widget in _registry.All)
             {
-                Settings.Widgets.Add(new WidgetSettings { Id = w.Id, Enabled = w.IsEnabled, Order = order++ });
+                WidgetSettings entry = Settings.Widgets
+                    .FirstOrDefault(s => string.Equals(s.Id, widget.Id, StringComparison.OrdinalIgnoreCase))
+                    ?? new WidgetSettings { Id = widget.Id };
+
+                entry.Enabled = widget.IsEnabled;
+
+                // 只有当前参与渲染的组件才占用顺序号，停用的保留原有 Order。
+                if (_registry.Center.Contains(widget) || _registry.Right.Contains(widget))
+                {
+                    entry.Order = order++;
+                }
+
+                kept.Add(entry);
             }
+
+            // 丢弃已经不在注册表里的陈旧条目。
+            Settings.Widgets.Clear();
+            Settings.Widgets.AddRange(kept);
 
             _settings.Save();
         }

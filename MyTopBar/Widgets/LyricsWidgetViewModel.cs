@@ -54,7 +54,11 @@ namespace MyTopBar.Widgets
 
         public void Start()
         {
-            _ticker.Start();
+            if (!_ticker.IsEnabled)
+            {
+                _ticker.Start();
+            }
+
             _ = _media.StartAsync();
         }
 

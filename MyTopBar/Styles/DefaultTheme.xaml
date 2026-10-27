@@ -1,9 +1,10 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <FontFamily x:Key="AppFont">pack://application:,,,/Assets/Fonts/#HarmonyOS Sans SC</FontFamily>
     <FontFamily x:Key="AppFontMedium">pack://application:,,,/Assets/Fonts/#HarmonyOS Sans SC Medium</FontFamily>
 
-    <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#F7F7F7" />
+    <!--  弹窗容器：浅色为基准，深色由 ThemeService.ApplyBrushes 覆盖  -->
+    <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#FFF7F7F7" />
 
     <SolidColorBrush x:Key="MenuBorderBrush" Color="#26000000" />
 
@@ -11,11 +12,34 @@
 
     <SolidColorBrush x:Key="MenuSecondaryForegroundBrush" Color="#80000000" />
 
-    <SolidColorBrush x:Key="MenuHoverBrush" Color="#167ACC" />
+    <SolidColorBrush x:Key="MenuHoverBrush" Color="#1A000000" />
+
+    <SolidColorBrush x:Key="MenuPressedBrush" Color="#33000000" />
 
     <SolidColorBrush x:Key="MenuHoverForegroundBrush" Color="White" />
 
     <SolidColorBrush x:Key="MenuSeparatorBrush" Color="#18000000" />
+
+    <!--  日历今天高亮  -->
+    <SolidColorBrush x:Key="CalendarTodayBrush" Color="#FF0A84FF" />
+
+    <SolidColorBrush x:Key="CalendarTodayForegroundBrush" Color="#FFFFFFFF" />
+
+    <!--  输入控件（设置窗口）：WPF 默认模板不跟随主题，必须显式指定  -->
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFFFF" />
+
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="#E6000000" />
+
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#33000000" />
+
+    <SolidColorBrush x:Key="InputBorderHoverBrush" Color="#59000000" />
+
+    <!--  强调色：默认沿用 macOS 蓝  -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#FF0A84FF" />
+
+    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFFFF" />
+
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#330A84FF" />
 
     <!--  顶栏组件前景色：浅色主题基准，深色切换时由 ThemeService 覆盖  -->
     <SolidColorBrush x:Key="BarForegroundBrush" Color="#E6000000" />
@@ -44,7 +68,7 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="8,0" />
-        <Setter Property="Foreground" Value="#1D1D1F" />
+        <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -57,11 +81,11 @@
 
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#1A000000" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
                         </Trigger>
 
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#33000000" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuPressedBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -74,7 +98,7 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="8,4" />
-        <Setter Property="Foreground" Value="#1D1D1F" />
+        <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -90,11 +114,11 @@
 
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#1A000000" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuHoverBrush}" />
                         </Trigger>
 
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#33000000" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource MenuPressedBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -104,7 +128,7 @@
 
     <Style x:Key="AppleMenuSeparator" TargetType="Separator">
         <Setter Property="Margin" Value="8,4" />
-        <Setter Property="Background" Value="#33000000" />
+        <Setter Property="Background" Value="{DynamicResource MenuSeparatorBrush}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Separator">

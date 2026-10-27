@@ -32,8 +32,11 @@ namespace MyTopBar.Widgets
         {
             _http = http;
             _dispatcher = dispatcher;
-            _timer.Tick += (_, _) => _ = RefreshAsync();
+            // 只挂一次；Start() 会在每次应用设置时重复调用。
+            _timer.Tick += OnTimerTick;
         }
+
+        private void OnTimerTick(object? sender, EventArgs e) => _ = RefreshAsync();
 
         public void Configure(string key, string location, int intervalMinutes)
         {
@@ -46,7 +49,14 @@ namespace MyTopBar.Widgets
         {
             if (string.IsNullOrWhiteSpace(_key))
             {
+                _timer.Stop();
                 Text = "天气 未配置";
+                return;
+            }
+
+            if (_timer.IsEnabled)
+            {
+                _ = RefreshAsync();
                 return;
             }
 

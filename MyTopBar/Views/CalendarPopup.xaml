@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="MyTopBar.Views.CalendarPopup"
+<UserControl x:Class="MyTopBar.Views.CalendarPopup"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -15,7 +15,7 @@
             <TextBlock VerticalAlignment="Center"
                        FontFamily="{StaticResource AppFontMedium}"
                        FontSize="14"
-                       Foreground="#1D1D1F"
+                       Foreground="{DynamicResource MenuForegroundBrush}"
                        Text="{Binding CurrentMonth, StringFormat={}{0:yyyy年M月}}" />
 
             <Button Grid.Column="1"
@@ -32,25 +32,25 @@
 
         <UniformGrid Margin="0,0,0,8" Columns="7">
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="一" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="二" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="三" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="四" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="五" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="六" />
             <TextBlock HorizontalAlignment="Center"
-                       Foreground="#80000000"
+                       Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="日" />
         </UniformGrid>
 
@@ -72,7 +72,7 @@
                                 <Setter Property="Background" Value="Transparent" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsToday}" Value="True">
-                                        <Setter Property="Background" Value="#0A84FF" />
+                                        <Setter Property="Background" Value="{DynamicResource CalendarTodayBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -83,13 +83,13 @@
                                    Text="{Binding Day}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#1D1D1F" />
+                                    <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCurrentMonth}" Value="False">
-                                            <Setter Property="Foreground" Value="#80000000" />
+                                            <Setter Property="Foreground" Value="{DynamicResource MenuSecondaryForegroundBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsToday}" Value="True">
-                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="Foreground" Value="{DynamicResource CalendarTodayForegroundBrush}" />
                                             <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
                                             <Setter Property="FontWeight" Value="SemiBold" />
                                         </DataTrigger>

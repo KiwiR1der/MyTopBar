@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interfaces;
 using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
@@ -7,6 +8,7 @@ using MyTopBar.Services.Media;
 using MyTopBar.ViewModels;
 using MyTopBar.Widgets;
 using System.Net.Http;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -14,6 +16,13 @@ namespace MyTopBar
 {
     public partial class App : Application
     {
+        /// <summary>
+        /// 单实例互斥体。顶栏会注册为系统 AppBar 并占用工作区，
+        /// 起两份会互相挤压、工作区被重复扣减，所以必须只允许一个实例。
+        /// 用 Global\ 前缀，跨会话（多用户切换）也能互斥。
+        /// </summary>
+        private static Mutex? _singleInstanceMutex;
+
         public new static App Current => (App)Application.Current;
 
         public IServiceProvider Services { get; }
@@ -21,6 +30,54 @@ namespace MyTopBar
         public App()
         {
             Services = ConfigureServices();
+        }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            // 必须在任何窗口创建之前判断。
+            _singleInstanceMutex = new Mutex(initiallyOwned: true, @"Global\MyTopBar.SingleInstance", out bool createdNew);
+
+            if (!createdNew)
+            {
+                AppLog.Info("检测到已有实例，本次启动退出。");
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+
+                // 已有实例继续运行，本进程不创建任何窗口直接退出。
+                Shutdown();
+                return;
+            }
+
+            RegisterGlobalExceptionHandlers();
+            AppLog.Info($"MyTopBar 启动 (pid={Environment.ProcessId})");
+
+            base.OnStartup(e);
+        }
+
+        /// <summary>
+        /// 全局兜底。顶栏是常驻进程，任何一个未处理异常都会让整条栏消失，
+        /// 且用户没有控制台可看，所以这里既记日志也尽量不让进程死掉。
+        /// </summary>
+        private void RegisterGlobalExceptionHandlers()
+        {
+            DispatcherUnhandledException += (_, args) =>
+            {
+                AppLog.Error("UI 线程未处理异常", args.Exception);
+
+                // 标记已处理，避免顶栏因为一次偶发异常（例如遍历视觉树时的竞争）直接退出。
+                args.Handled = true;
+            };
+
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                AppLog.Error("未观察的任务异常", args.Exception);
+                args.SetObserved();
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                AppLog.Error("应用域未处理异常（进程即将终止）", args.ExceptionObject as Exception);
+            };
         }
 
         private static IServiceProvider ConfigureServices()
@@ -67,6 +124,22 @@ namespace MyTopBar
                 disposable.Dispose();
             }
 
+            if (_singleInstanceMutex is not null)
+            {
+                try
+                {
+                    _singleInstanceMutex.ReleaseMutex();
+                }
+                catch
+                {
+                    // 未持有互斥体（例如启动时已被判定为第二实例）时忽略。
+                }
+
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+            }
+
+            AppLog.Info("MyTopBar 退出");
             base.OnExit(e);
         }
     }
