@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
+using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 using MyTopBar.ViewModels;
 using MyTopBar.Widgets;
@@ -104,46 +105,12 @@ namespace MyTopBar
         }
 
         /// <summary>
-        /// 应用毛玻璃：清掉 DWM 的系统背景，改用
-        /// SetWindowCompositionAttribute(ACCENT_ENABLE_BLURBEHIND)。
-        ///
-        /// 材质固定为毛玻璃，不再支持切换。选它的原因：
-        ///   - 只做高斯模糊，不加噪点、不叠色调，背景纹理仍然可见
-        ///   - DWM 的 SystemBackdrop（Acrylic/Mica）在窗口长期未激活时会退化，
-        ///     而本窗口带 WS_EX_NOACTIVATE，永远不是活动窗口，
-        ///     实测 Acrylic 约 1 分钟后变成均匀灰块
-        ///   - BLURBEHIND 不受活动状态影响
+        /// 应用毛玻璃：委托给 GlassEffect。
+        /// 材质固定为 BLURBEHIND 的理由见 GlassEffect / MaterialInfo 的注释。
         /// </summary>
         private void ApplyBlurMaterial(bool isDark, IntPtr handle)
         {
-            // 先关掉 DWM 原生背景，让合成层能显示出来。
-            try
-            {
-                int none = NativeMethods.DWMSBT_NONE;
-                NativeMethods.DwmSetWindowAttribute(
-                    handle, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref none, sizeof(int));
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error("毛玻璃：复位系统背景失败", ex);
-            }
-
-            // 明暗模式仍然要让 DWM 知道，窗口边框/阴影会跟着变。
-            try
-            {
-                int dark = isDark ? 1 : 0;
-                NativeMethods.DwmSetWindowAttribute(
-                    handle, NativeMethods.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error("毛玻璃：设置明暗模式失败", ex);
-            }
-
-            if (!NativeMethods.ApplyBlurBehind(handle))
-            {
-                AppLog.Error("毛玻璃：SetWindowCompositionAttribute 调用失败");
-            }
+            GlassEffect.Apply(handle, isDark, roundCorners: false);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)

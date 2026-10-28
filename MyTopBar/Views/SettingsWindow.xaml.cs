@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
+using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 
 namespace MyTopBar.Views
@@ -22,6 +23,7 @@ namespace MyTopBar.Views
     public partial class SettingsWindow : Window
     {
         private readonly ViewModels.SettingsViewModel _viewModel;
+        private readonly GlassEffect.GlassRegistration _glass;
 
         /// <summary>任一设置项改动后触发，供顶栏即时应用。</summary>
         public event EventHandler? SettingsApplied;
@@ -34,18 +36,13 @@ namespace MyTopBar.Views
             DataContext = _viewModel;
             _viewModel.SettingsApplied += (_, _) => SettingsApplied?.Invoke(this, EventArgs.Empty);
 
-            SourceInitialized += OnSourceInitialized;
+            // 一键注册毛玻璃：挂 SourceInitialized / Loaded / ThemeChanged，
+            // 主题明暗切换时 DWM 边框/阴影颜色会自动跟随（此前这里缺失该订阅）。
+            _glass = GlassEffect.Register(
+                this, App.Current.Services.GetRequiredService<ThemeService>());
+
             Loaded += OnLoaded;
             Closed += OnClosed;
-        }
-
-        /// <summary>
-        /// 句柄刚创建：只做一次材质设置，
-        /// CompositionTarget 留到 Loaded 再置透明。
-        /// </summary>
-        private void OnSourceInitialized(object? sender, EventArgs e)
-        {
-            ApplyGlass(new WindowInteropHelper(this).Handle);
         }
 
         /// <summary>
@@ -58,9 +55,9 @@ namespace MyTopBar.Views
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             /*
-             * 延后一帧再应用。
+             * 延后一帧再补一次透明。
              *
-             * 直接在这里设 CompositionTarget.BackgroundColor 无效——
+             * 直接在 Loaded 里设 CompositionTarget.BackgroundColor 无效——
              * 实测背景仍是纯黑 RGB(0,0,0)。原因是窗口刚完成首次合成，
              * 此时改动会被渲染批次忽略；必须等当前批处理结束后再设，
              * 并配合一次重绘，透明客户区才会真正生效。
@@ -70,56 +67,16 @@ namespace MyTopBar.Views
              */
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
-                ApplyGlass(new WindowInteropHelper(this).Handle);
+                GlassEffect.SetTransparentClientArea(this);
+                InvalidateVisual();
             }));
-        }
-
-        private void ApplyGlass(IntPtr handle)
-        {
-            if (handle == IntPtr.Zero)
-            {
-                return;
-            }
-
-            /*
-             * 设成 Transparent 让 WPF 不画不透明底。
-             *
-             * 但只设这个还不够：窗口此刻已经被 WPF 合成过一次（黑色），
-             * 必须再强制重绘一次，合成器才会用新的透明底重画。
-             * 用 Dispatcher 投递到 Loaded 之后执行，避开当前渲染批次。
-             */
-            if (HwndSource.FromHwnd(handle) is HwndSource source && source.CompositionTarget is not null)
-            {
-                source.CompositionTarget.BackgroundColor = Colors.Transparent;
-            }
-
-            var margins = new NativeMethods.MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
-            NativeMethods.DwmExtendFrameIntoClientArea(handle, ref margins);
-
-            // 清掉可能残留的 DWM 原生材质，避免盖住合成层。
-            int none = NativeMethods.DWMSBT_NONE;
-            NativeMethods.DwmSetWindowAttribute(
-                handle, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref none, sizeof(int));
-
-            bool isDark = App.Current.Services.GetRequiredService<ThemeService>().IsDark;
-            int dark = isDark ? 1 : 0;
-            NativeMethods.DwmSetWindowAttribute(
-                handle, NativeMethods.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
-
-            if (!NativeMethods.ApplyBlurBehind(handle))
-            {
-                AppLog.Error("设置窗口：毛玻璃应用失败");
-            }
-
-            // 触发一次重绘，让透明客户区真正生效。
-            InvalidateVisual();
         }
 
         private void OnClosed(object? sender, EventArgs e)
         {
-            SourceInitialized -= OnSourceInitialized;
             Loaded -= OnLoaded;
             Closed -= OnClosed;
+            _glass.Dispose();
         }
 
         /// <summary>

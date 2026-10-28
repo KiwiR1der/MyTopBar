@@ -1,3 +1,4 @@
+using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models.Settings;
 using System.Windows;
 using System.Windows.Media;
@@ -6,7 +7,7 @@ namespace MyTopBar.Services
     /// <summary>
     /// 解析最终的明暗模式，并在变化时通知界面换色。
     /// </summary>
-    public sealed class ThemeService : IDisposable
+    public sealed class ThemeService : GlassEffect.ThemeServiceLike, IDisposable
     {
         private bool _disposed;
 
