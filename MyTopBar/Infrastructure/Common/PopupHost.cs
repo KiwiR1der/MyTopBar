@@ -28,6 +28,7 @@ namespace MyTopBar.Infrastructure.Common
 
         private readonly Popup _popup;
         private readonly Dispatcher _dispatcher;
+        private IntPtr _hostHandle = IntPtr.Zero;
         private bool _closing;
 
         public PopupHost(Popup popup)
@@ -38,6 +39,26 @@ namespace MyTopBar.Infrastructure.Common
 
             _popup.Opened += OnOpened;
             _popup.Closed += OnClosed;
+            PopupDismissManager.Register(this);
+        }
+
+        public bool IsOpen => _popup.IsOpen;
+
+        /// <summary>弹窗宿主 HWND（打开后才有值），供外部点击判定用。</summary>
+        public IntPtr HostHandle => _hostHandle;
+
+        /// <summary>
+        /// 由 PopupDismissManager 在外部点击时调用。
+        /// 钩子回调不在 UI 线程，需投递回 UI 线程再关。
+        /// </summary>
+        internal void CloseFromExternal()
+        {
+            if (!_popup.IsOpen)
+            {
+                return;
+            }
+
+            _dispatcher.BeginInvoke(new Action(() => _popup.IsOpen = false));
         }
 
         public void Toggle()
@@ -69,6 +90,12 @@ namespace MyTopBar.Infrastructure.Common
 
             GlassEffect.ApplyToPopupHost(source);
 
+            // 记录宿主句柄，供「点外部即收起」判定落点是否在弹窗内。
+            _hostHandle = source.Handle;
+
+            // 弹窗开了，挂上全局鼠标钩子以便「点外部即收起」。
+            PopupDismissManager.NotifyOpened();
+
             SetWindowPos(
                 source.Handle,
                 HwndTopmost,
@@ -79,11 +106,13 @@ namespace MyTopBar.Infrastructure.Common
                 SwpNoMove | SwpNoSize | SwpNoActivate);
         }
 
-
         private void OnClosed(object? sender, EventArgs e)
         {
             _closing = true;
             _dispatcher.BeginInvoke(() => _closing = false);
+
+            // 全部关闭后摘掉钩子，不常驻监听。
+            PopupDismissManager.NotifyClosed();
         }
 
         [DllImport("user32.dll", SetLastError = true)]

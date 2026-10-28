@@ -69,7 +69,37 @@ namespace MyTopBar.Views
             {
                 GlassEffect.SetTransparentClientArea(this);
                 InvalidateVisual();
+
+                /*
+                 * 抢前台。
+                 *
+                 * 本窗口由顶栏菜单打开，而顶栏带 WS_EX_NOACTIVATE 从不激活，
+                 * 本进程因此不被系统认作前台进程，Show() 内部的激活请求会被
+                 * 前台锁定规则静默拒绝 —— 表现为窗口能显示但落在其他窗口后面。
+                 * 这里在渲染完成后显式把窗口推到最前。
+                 */
+                BringToFront();
             }));
+        }
+
+        /// <summary>
+        /// 把窗口带到前台。
+        ///
+        /// 直接 Window.Activate() 会被 Windows 前台锁定规则拒绝
+        /// （本进程从不被认作前台进程），因此统一走 ForceForeground。
+        /// 供 OnLoaded 与外部（菜单命令重复打开时）调用。
+        /// </summary>
+        public void BringToFront()
+        {
+            NativeMethods.ForceForeground(new WindowInteropHelper(this).Handle);
+
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+
+            Activate();
+            Focus();
         }
 
         private void OnClosed(object? sender, EventArgs e)

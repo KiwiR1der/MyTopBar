@@ -126,7 +126,9 @@ namespace MyTopBar.ViewModels
         {
             if (_settingsWindow is { IsLoaded: true })
             {
-                _settingsWindow.Activate();
+                // 同样受前台锁限制：普通 Activate() 会被系统静默拒绝，
+                // 需要走 ForceForeground 才能真正把已有窗口提到最前。
+                _settingsWindow.BringToFront();
                 return;
             }
 

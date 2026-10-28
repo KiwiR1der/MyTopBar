@@ -8,16 +8,42 @@ namespace MyTopBar.Infrastructure.Interop
     /// </summary>
     internal static class NativeMethods
     {
-        #region 低级键盘钩子
+        #region 低级鼠标/键盘钩子
 
         public const int WH_KEYBOARD_LL = 13;
+        public const int WH_MOUSE_LL = 14;
 
-        /// <summary>低级键盘钩子回调。必须在托管侧持有引用，否则会被 GC 回收导致崩溃。</summary>
+        /// <summary>低级钩子回调。必须在托管侧持有引用，否则会被 GC 回收导致崩溃。</summary>
+        public delegate IntPtr LowLevelHookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        /// <summary>低级键盘钩子回调（与 LowLevelHookProc 同签名，保留以兼容既有代码）。</summary>
         public delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        /// <summary>WH_MOUSE_LL 的 lParam 指向的结构。</summary>
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int x;
+            public int y;
+        }
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr SetWindowsHookEx(
             int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SetWindowsHookEx(
+            int idHook, LowLevelHookProc lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -25,6 +51,14 @@ namespace MyTopBar.Infrastructure.Interop
 
         [DllImport("user32.dll")]
         public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        /// <summary>取指定屏幕坐标处顶层窗口的句柄。</summary>
+        [DllImport("user32.dll")]
+        public static extern IntPtr WindowFromPoint(POINT pt);
+
+        /// <summary>取窗口所属进程 id。</summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
         #endregion
 
@@ -68,6 +102,53 @@ namespace MyTopBar.Infrastructure.Interop
             IntPtr style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
             long value = style.ToInt64() | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
             SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(value));
+        }
+
+        public const uint ASFW_ANY = 0xFFFFFFFF;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool AllowSetForegroundWindow(uint dwProcessId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        public const int SW_RESTORE = 9;
+
+        /// <summary>
+        /// 强制把窗口带到前台。
+        ///
+        /// 背景：顶栏带 WS_EX_NOACTIVATE，永远不是活动窗口，本进程也就从不
+        /// 被系统认作「前台进程」。Windows 的前台锁定规则因此会静默拒绝
+        /// 本进程发出的 SetForegroundWindow —— 表现为新建的窗口（如设置窗口）
+        /// 能显示，但落在其他窗口后面拿不到焦点。
+        ///
+        /// 这里先调用 AllowSetForegroundWindow(ASFW_ANY) 显式让出前台权，
+        /// 再逐级升级：ShowWindow(SW_RESTORE) → BringWindowToTop →
+        /// SetForegroundWindow。任一步成功即可把窗口推到最前。
+        /// </summary>
+        public static void ForceForeground(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            // 放弃本进程的"前台特权"，允许随后的请求生效。
+            AllowSetForegroundWindow(ASFW_ANY);
+
+            ShowWindow(hwnd, SW_RESTORE);
+            BringWindowToTop(hwnd);
+
+            if (GetForegroundWindow() != hwnd)
+            {
+                SetForegroundWindow(hwnd);
+            }
         }
 
         #endregion
