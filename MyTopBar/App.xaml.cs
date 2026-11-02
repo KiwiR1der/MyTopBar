@@ -141,6 +141,7 @@ namespace MyTopBar
             services.AddTransient<MainViewModel>();
             services.AddTransient<CalendarPopupViewModel>();
             services.AddTransient<AudioPopupViewModel>();
+            services.AddTransient<WeatherPopupViewModel>();
 
             return services.BuildServiceProvider();
         }

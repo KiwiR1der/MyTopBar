@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -24,6 +25,7 @@ namespace MyTopBar
         private readonly ThemeService _theme;
         private readonly PopupHost _appleMenu;
         private readonly PopupHost _clockMenu;
+        private readonly PopupHost _weatherMenu;
         private readonly PopupHost _audioMenu;
 
         private readonly DispatcherTimer _sortModeTimer = new();
@@ -50,6 +52,7 @@ namespace MyTopBar
             _appBarController = new AppBarController(this, AppBarController.AppBarEdge.Top, height);
             _appleMenu = new PopupHost(AppleMenuPopup);
             _clockMenu = new PopupHost(ClockPopup);
+            _weatherMenu = new PopupHost(WeatherPopup);
             _audioMenu = new PopupHost(AudioPopup);
 
             SourceInitialized += OnSourceInitialized;
@@ -153,16 +156,35 @@ namespace MyTopBar
 
         private void AppleButton_Click(object sender, RoutedEventArgs e) => _appleMenu.Toggle();
 
-        /// <summary>点击右区时钟区域弹出日历；点到其他组件则忽略。</summary>
+        /// <summary>点击右区组件：时钟→日历弹窗，天气→天气详情弹窗。</summary>
         private void OnRightItemsClick(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is FrameworkElement fe && fe.DataContext is ClockWidgetViewModel)
+            if (e.OriginalSource is FrameworkElement fe)
             {
-                _clockMenu.Toggle();
+                if (fe.DataContext is ClockWidgetViewModel)
+                {
+                    _clockMenu.Toggle();
+                }
+                else if (fe.DataContext is WeatherWidgetViewModel)
+                {
+                    _weatherMenu.Toggle();
+                }
             }
         }
 
         private void AudioButton_Click(object sender, RoutedEventArgs e) => _audioMenu.Toggle();
+
+        /// <summary>
+        /// 自定义弹窗定位：右边缘对齐 PlacementTarget 右边缘，顶部出现在其下方 6px。
+        /// 解决 Placement="Bottom" 默认左对齐导致弹窗偏左的问题。
+        /// </summary>
+        private CustomPopupPlacement[] RightAlignPopupCallback(Size popupSize, Size targetSize, Point offset)
+        {
+            // 右对齐：x = 目标宽度 - 弹窗宽度；y = 目标高度 + 6px 间距
+            double x = targetSize.Width - popupSize.Width;
+            double y = targetSize.Height + 6;
+            return [new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)];
+        }
 
         #region 拖动排序（按住左键 3 秒进入排序模式）
 

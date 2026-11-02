@@ -174,12 +174,11 @@
                 <!--  时钟日历弹窗：锚定右区面板，点击时钟区域弹出  -->
                 <Popup x:Name="ClockPopup"
                        AllowsTransparency="True"
-                       HorizontalOffset="-4"
-                       Placement="Bottom"
+                       CustomPopupPlacementCallback="RightAlignPopupCallback"
+                       Placement="Custom"
                        PlacementTarget="{Binding ElementName=RightPanel}"
                        PopupAnimation="Fade"
-                       StaysOpen="False"
-                       VerticalOffset="6">
+                       StaysOpen="False">
                     <Border MinWidth="248"
                             Padding="10,8"
                             Background="{DynamicResource PopupGlassBrush}"
@@ -191,6 +190,24 @@
                     </Border>
                 </Popup>
 
+                <!--  天气详情弹窗：锚定右区面板，点击天气组件弹出  -->
+                <Popup x:Name="WeatherPopup"
+                       AllowsTransparency="True"
+                       CustomPopupPlacementCallback="RightAlignPopupCallback"
+                       Placement="Custom"
+                       PlacementTarget="{Binding ElementName=RightPanel}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False">
+                    <Border MinWidth="280"
+                            Padding="14,12"
+                            Background="{DynamicResource PopupGlassBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="14">
+                        <views:WeatherPopupView />
+                    </Border>
+                </Popup>
                 <!--  音量在最右侧（最外），网络等指标在其内侧  -->
                 <Button x:Name="AudioButton"
                         Click="AudioButton_Click"
