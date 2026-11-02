@@ -11,7 +11,8 @@
     <Window.Resources>
         <!--  设置窗口里重复出现的小标题 / 标签，统一收口  -->
         <Style x:Key="SectionHeader" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+            <Setter Property="FontWeight" Value="{StaticResource FontWeightHeading}" />
             <Setter Property="FontSize" Value="16" />
             <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
             <Setter Property="Margin" Value="0,0,0,12" />
@@ -76,7 +77,8 @@
                 Padding="10,14,10,14">
             <StackPanel>
                 <TextBlock Margin="4,0,0,12"
-                           FontFamily="{StaticResource AppFontMedium}"
+                           FontFamily="{StaticResource AppFont}"
+                           FontWeight="{StaticResource FontWeightHeading}"
                            FontSize="15"
                            Foreground="{DynamicResource MenuForegroundBrush}"
                            Text="设置" />

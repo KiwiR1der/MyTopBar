@@ -6,7 +6,8 @@
     <!--  顶栏内所有组件共用的文字样式  -->
     <Style x:Key="BarText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFontMedium}" />
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightEmphasis}" />
         <Setter Property="FontSize" Value="12.5" />
         <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -18,6 +19,7 @@
         <Setter Property="Foreground" Value="{DynamicResource BarSecondaryForegroundBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
     </Style>
 
     <!--  组件之间的细分隔线  -->

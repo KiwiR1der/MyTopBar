@@ -16,7 +16,8 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock VerticalAlignment="Center"
-                       FontFamily="{StaticResource AppFontMedium}"
+                       FontFamily="{StaticResource AppFont}"
+                       FontWeight="{StaticResource FontWeightEmphasis}"
                        FontSize="14"
                        Foreground="{DynamicResource MenuForegroundBrush}"
                        Text="{Binding PlaceName}" />
@@ -26,7 +27,7 @@
                     Background="{DynamicResource MenuHoverBrush}"
                     CornerRadius="12">
                 <TextBlock FontSize="11"
-                           FontWeight="SemiBold"
+                           FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                            Text="{Binding ConditionText, StringFormat=现在 · {0}}" />
             </Border>
@@ -42,7 +43,7 @@
             <TextBlock VerticalAlignment="Bottom"
                        FontFamily="{StaticResource AppFont}"
                        FontSize="64"
-                       FontWeight="Light"
+                       FontWeight="{StaticResource FontWeightCaption}"
                        Foreground="{DynamicResource MenuForegroundBrush}"
                        Text="{Binding Temperature, StringFormat={}{0}°}" />
 
@@ -56,7 +57,7 @@
         <!--  最高 / 最低  -->
         <TextBlock Margin="0,0,0,14"
                    FontSize="13"
-                   FontWeight="SemiBold"
+                   FontWeight="{StaticResource FontWeightEmphasis}"
                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}">
             <Run Text="最高 " />
             <Run Text="{Binding HighTemp}" />
@@ -85,7 +86,7 @@
                            Text="体感温度" />
                 <TextBlock Margin="0,2,0,0"
                            FontSize="17"
-                           FontWeight="SemiBold"
+                           FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuForegroundBrush}"
                            Text="{Binding FeelsLike}" />
             </StackPanel>
@@ -97,7 +98,7 @@
                            Text="湿度" />
                 <TextBlock Margin="0,2,0,0"
                            FontSize="17"
-                           FontWeight="SemiBold"
+                           FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuForegroundBrush}"
                            Text="{Binding Humidity}" />
             </StackPanel>
@@ -109,7 +110,7 @@
                            Text="风速" />
                 <TextBlock Margin="0,2,0,0"
                            FontSize="17"
-                           FontWeight="SemiBold"
+                           FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuForegroundBrush}"
                            Text="{Binding WindInfo}" />
             </StackPanel>
@@ -121,7 +122,7 @@
                            Text="日出 / 日落" />
                 <TextBlock Margin="0,2,0,0"
                            FontSize="17"
-                           FontWeight="SemiBold"
+                           FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuForegroundBrush}">
                     <Run Text="{Binding Sunrise}" />
                     <Run Text=" / " />
@@ -133,7 +134,7 @@
         <!--  未来预报标题  -->
         <TextBlock Margin="0,0,0,8"
                    FontSize="12"
-                   FontWeight="Bold"
+                   FontWeight="{StaticResource FontWeightHeading}"
                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                    Text="未来预报" />
 
@@ -171,7 +172,7 @@
                                     VerticalAlignment="Center"
                                     Orientation="Horizontal">
                             <TextBlock FontSize="13"
-                                       FontWeight="SemiBold"
+                                       FontWeight="{StaticResource FontWeightEmphasis}"
                                        Foreground="{DynamicResource MenuForegroundBrush}"
                                        Text="{Binding High}" />
                             <TextBlock Margin="4,0,0,0"
