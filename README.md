@@ -223,7 +223,11 @@ MyTopBar/
 | [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入 |
 | [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
 
-字体使用 HarmonyOS Sans SC。
+字体使用 [HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，
+由华为发布，采用 [HarmonyOS Sans Fonts License](https://developer.harmonyos.com/cn/design/resource/fonts/)：
+可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，
+且需保留原始版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，
+包含 Light / Regular / Medium / Bold / Black 五个字重，版权归华为所有。
 
 ## 许可证
 

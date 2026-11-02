@@ -57,10 +57,15 @@ namespace MyTopBar.Services
             SetBrush(r, "MenuBorderBrush", isDark ? "#40FFFFFF" : "#26000000");
 
             /*
-             * 弹窗的毛玻璃底色：必须接近透明，否则会盖住模糊层。
-             * 深色偏暗、浅色偏亮，让文字在复杂壁纸上仍有对比度。
+             * 弹窗底色：刻意保持完全透明。
+             *
+             * 已验证 Popup 上的毛玻璃（SetWindowCompositionAttribute）是生效的，
+             * 底色一律置空，让壁纸模糊结果直接透出来，观感最干净。
+             * 加任何白色/黑色底都会盖住模糊层、显得发闷，所以不要再加回来。
+             *
+             * 注意：本刷子同时被设置窗口的导航栏复用，改动会一并影响那里。
              */
-            SetBrush(r, "PopupGlassBrush", isDark ? "#24000000" : "#1FFFFFFF");
+            SetBrush(r, "PopupGlassBrush", "#00FFFFFF");
 
             // 弹窗内容
             SetBrush(r, "MenuForegroundBrush", isDark ? "#E6FFFFFF" : "#E6000000");

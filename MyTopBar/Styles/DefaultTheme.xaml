@@ -13,20 +13,22 @@
 
     <!--
         ==========  字重令牌  ==========
-        只用「真实字形」的档位：Light(300) / Regular(400) / Medium(500) / Bold(700) / Black(900)。
-        不要在这里出现 SemiBold(600) / ExtraBold(800) —— 没有对应字形，WPF 会吸附到邻档，
-        写 600 得到的是 500（不是半粗），写 800 得到的是 700，容易误判。
+        【预览状态】目前 5 个令牌统一为 Regular，用于对比"全部常规体"的观感。
+        恢复语义层级时，把下面 5 行改回：
+            Caption  = Light    (300)
+            Body     = Normal   (400)
+            Emphasis = Medium   (500)
+            Heading  = Bold     (700)
+            Display  = Black    (900)
 
-        命名按"语义用途"而非数值，字号与字重解耦：
-        同一语义在不同字号下复用同一个令牌，视觉层级才稳定。
-        用法：<Setter Property="FontWeight" Value="{StaticResource FontWeightEmphasis}" />
-        直接写 FontWeight="Bold" 也能工作，但会绕开这份清单，新代码请用令牌。
+        只用「真实字形」的档位：Light / Normal / Medium / Bold / Black。
+        不要用 SemiBold(600) / ExtraBold(800) —— 没有对应字形，会被吸附到邻档。
     -->
-    <FontWeight x:Key="FontWeightCaption">Light</FontWeight>
+    <FontWeight x:Key="FontWeightCaption">Normal</FontWeight>
     <FontWeight x:Key="FontWeightBody">Normal</FontWeight>
-    <FontWeight x:Key="FontWeightEmphasis">Medium</FontWeight>
-    <FontWeight x:Key="FontWeightHeading">Bold</FontWeight>
-    <FontWeight x:Key="FontWeightDisplay">Black</FontWeight>
+    <FontWeight x:Key="FontWeightEmphasis">Normal</FontWeight>
+    <FontWeight x:Key="FontWeightHeading">Normal</FontWeight>
+    <FontWeight x:Key="FontWeightDisplay">Normal</FontWeight>
 
     <!--  弹窗容器：浅色为基准，深色由 ThemeService.ApplyBrushes 覆盖  -->
     <SolidColorBrush x:Key="MenuBackgroundBrush" Color="#FFF7F7F7" />
