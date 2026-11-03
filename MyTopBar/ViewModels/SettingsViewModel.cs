@@ -100,6 +100,9 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private bool _hitokotoEnabled;
 
+        [ObservableProperty]
+        private bool _launchAtStartup;
+
         /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
@@ -146,6 +149,7 @@ namespace MyTopBar.ViewModels
                 : qw.PlaceName;
 
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
+            _launchAtStartup = StartupService.IsEnabled();
 
             InitMediaSources(current.Lyrics.SourceAppId, lyrics);
 
@@ -289,6 +293,26 @@ namespace MyTopBar.ViewModels
 
             _settings.Current.Api.Hitokoto.Enabled = value;
             _settings.Save();
+        }
+
+        /// <summary>
+        /// 开机自启：状态以注册表为准，不写进 settings.json。
+        /// 用户在任务管理器「启动」页改动后，下次打开设置会读到真实状态。
+        /// </summary>
+        partial void OnLaunchAtStartupChanged(bool value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            // 写注册表后以实际结果回写属性，失败时（如权限问题）界面状态不会假成功。
+            bool actual = StartupService.SetEnabled(value);
+            if (actual != value)
+            {
+                _launchAtStartup = actual;
+                OnPropertyChanged(nameof(LaunchAtStartup));
+            }
         }
 
         /// <summary>

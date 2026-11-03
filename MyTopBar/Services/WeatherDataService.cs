@@ -346,7 +346,7 @@ namespace MyTopBar.Services
 
                 string tempStr = $"{Math.Round(tempValue)}";
                 string display = $"{text} {tempStr}°";
-                string icon = GetWeatherIcon(iconCode, text);
+                string icon = GetWeatherIconKey(iconCode, text);
 
                 return new CurrentWeatherData
                 {
@@ -392,7 +392,7 @@ namespace MyTopBar.Services
                         && daytime.TryGetProperty("condition", out JsonElement cond) && cond.ValueKind == JsonValueKind.Object)
                     {
                         dayText = ReadString(cond, "text");
-                        dayIcon = GetWeatherIcon(ReadString(cond, "code"), dayText);
+                        dayIcon = GetWeatherIconKey(ReadString(cond, "code"), dayText);
                     }
 
                     string high = TryReadNumber(day, "temperatureMax", out double maxVal)
@@ -504,83 +504,58 @@ namespace MyTopBar.Services
         /// 把和风天气的 icon 代码映射成 emoji。
         /// 文档：https://dev.qweather.com/docs/resource/icons/
         /// </summary>
-        private static string GetWeatherIcon(string iconCode, string conditionText)
+        /*
+         * 把和风天气的 icon 代码映射成彩色矢量图标的资源 key。
+         * 返回值对应 WeatherIcons.xaml 里的 WeatherIcon_{key}（阿里 iconfont 彩色 SVG 转换而来）。
+         * 文档：https://dev.qweather.com/docs/resource/icons/
+         *
+         * 之前用 emoji（Segoe UI Emoji），但 WPF 字体回退在深色背景下渲染成单色轮廓，
+         * 且彩色渲染依赖系统/DirectWrite 行为不稳定，故改用自绘矢量图标。
+         */
+        private static string GetWeatherIconKey(string iconCode, string conditionText)
         {
-            string icon = iconCode switch
+            string key = iconCode switch
             {
-                "100" => "☀️",   // 晴
-                "101" => "⛅",   // 多云
-                "102" => "⛅",   // 少云
-                "103" => "⛅",   // 晴间多云
-                "104" => "☁️",   // 阴
-                "150" => "🌙",   // 晴（夜）
-                "151" => "☁️",   // 多云（夜）
-                "152" => "☁️",   // 少云（夜）
-                "153" => "☁️",   // 晴间多云（夜）
-                "300" => "🌦️",   // 阵雨
-                "301" => "🌧️",   // 强阵雨
-                "302" => "⛈️",   // 雷阵雨
-                "303" => "⛈️",   // 强雷阵雨
-                "304" => "⛈️",   // 雷阵雨伴有冰雹
-                "305" => "🌧️",   // 小雨
-                "306" => "🌧️",   // 中雨
-                "307" => "🌧️",   // 大雨
-                "308" => "🌧️",   // 极端降雨
-                "309" => "🌧️",   // 毛毛雨/细雨
-                "310" => "🌧️",   // 暴雨
-                "311" => "🌧️",   // 大暴雨
-                "312" => "🌧️",   // 特大暴雨
-                "313" => "🌧️",   // 冻雨
-                "314" => "🌧️",   // 小到中雨
-                "315" => "🌧️",   // 中到大雨
-                "316" => "🌧️",   // 大到暴雨
-                "317" => "🌧️",   // 暴雨到大暴雨
-                "318" => "🌧️",   // 大暴雨到特大暴雨
-                "399" => "🌧️",   // 雨
-                "400" => "🌨️",   // 小雪
-                "401" => "🌨️",   // 中雪
-                "402" => "🌨️",   // 大雪
-                "403" => "🌨️",   // 暴雪
-                "404" => "🌨️",   // 雨夹雪
-                "405" => "🌨️",   // 雨雪天气
-                "406" => "🌨️",   // 阵雨夹雪
-                "407" => "🌨️",   // 阵雪
-                "499" => "🌨️",   // 雪
-                "500" => "🌫️",   // 薄雾
-                "501" => "🌫️",   // 雾
-                "502" => "🌫️",   // 霾
-                "503" => "🌪️",   // 扬沙
-                "504" => "🌪️",   // 浮尘
-                "507" => "🌪️",   // 沙尘暴
-                "508" => "🌪️",   // 强沙尘暴
-                "509" => "🌫️",   // 浓雾
-                "510" => "🌫️",   // 强浓雾
-                "511" => "🌫️",   // 中度霾
-                "512" => "🌫️",   // 重度霾
-                "513" => "🌫️",   // 严重霾
-                "514" => "🌫️",   // 大雾
-                "515" => "🌫️",   // 特强浓雾
-                "900" => "🔥",   // 热
-                "901" => "❄️",   // 冷
-                "999" => "🌡️",   // 未知
+                "100" => "qingtian",      // 晴
+                "101" or "102" or "103" => "duoyun",   // 多云/少云/晴间多云
+                "104" => "yintian",       // 阴
+                "150" => "yewan",         // 晴（夜）
+                "151" or "152" or "153" => "duoyun",   // 多云（夜）
+                "300" or "301" => "zhenyu",            // 阵雨/强阵雨
+                "302" or "303" or "304" => "fengbao",  // 雷阵雨/冰雹
+                "305" or "309" or "314" => "xiaoyu",   // 小雨/毛毛雨/小到中雨
+                "306" or "315" => "zhongyu",           // 中雨/中到大雨
+                "307" or "308" or "310" or "311" or "312"
+                    or "316" or "317" or "318" => "dayu",  // 大雨及以上
+                "313" => "bingbaoyu",     // 冻雨
+                "399" => "xiayu",         // 雨
+                "400" or "407" => "xiaoxue",           // 小雪/阵雪
+                "401" or "402" or "403" or "499" => "daxue",  // 中雪/大雪/暴雪/雪
+                "404" or "405" or "406" => "yuxue",    // 雨夹雪/雨雪/阵雨夹雪
+                "500" or "501" or "509" or "510" or "514" or "515" => "dawu",  // 雾
+                "502" or "511" or "512" or "513" => "mai",     // 霾
+                "503" or "504" => "chentu",            // 扬沙/浮尘
+                "507" or "508" => "shachen",           // 沙尘暴
+                "900" => "qingtian",      // 热
+                "901" => "daxue",         // 冷
                 _ => string.Empty
             };
 
-            if (!string.IsNullOrEmpty(icon))
+            if (!string.IsNullOrEmpty(key))
             {
-                return icon;
+                return key;
             }
 
             // 按文字描述兜底匹配
-            if (conditionText.Contains("晴")) return "☀️";
-            if (conditionText.Contains("云") || conditionText.Contains("阴")) return "☁️";
-            if (conditionText.Contains("雨")) return "🌧️";
-            if (conditionText.Contains("雪")) return "🌨️";
-            if (conditionText.Contains("雷")) return "⛈️";
-            if (conditionText.Contains("雾") || conditionText.Contains("霾")) return "🌫️";
-            if (conditionText.Contains("沙") || conditionText.Contains("尘")) return "🌪️";
+            if (conditionText.Contains("雷")) return "fengbao";
+            if (conditionText.Contains("雪")) return "daxue";
+            if (conditionText.Contains("雨")) return "xiayu";
+            if (conditionText.Contains("雾") || conditionText.Contains("霾")) return "dawu";
+            if (conditionText.Contains("沙") || conditionText.Contains("尘")) return "shachen";
+            if (conditionText.Contains("晴")) return "qingtian";
+            if (conditionText.Contains("云") || conditionText.Contains("阴")) return "duoyun";
 
-            return "🌡️";
+            return "qingtian";
         }
 
         // ---- 数据模型 ----

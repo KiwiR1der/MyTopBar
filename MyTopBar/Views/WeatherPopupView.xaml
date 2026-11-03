@@ -1,11 +1,15 @@
 <UserControl x:Class="MyTopBar.Views.WeatherPopupView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:common="clr-namespace:MyTopBar.Infrastructure.Common"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              d:DesignHeight="400"
              d:DesignWidth="300"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <common:WeatherIconConverter x:Key="WeatherIconConverter" />
+    </UserControl.Resources>
     <StackPanel>
 
         <!--  顶部：地点 + 天气标签  -->
@@ -47,11 +51,12 @@
                        Foreground="{DynamicResource MenuForegroundBrush}"
                        Text="{Binding Temperature, StringFormat={}{0}°}" />
 
-            <TextBlock Grid.Column="1"
-                       VerticalAlignment="Bottom"
-                       FontSize="42"
-                       Margin="8,0,0,8"
-                       Text="{Binding Icon}" />
+            <Image Grid.Column="1"
+                   Width="52"
+                   Height="52"
+                   VerticalAlignment="Bottom"
+                   Margin="8,0,0,4"
+                   Source="{Binding Icon, Converter={StaticResource WeatherIconConverter}}" />
         </Grid>
 
         <!--  最高 / 最低  -->
@@ -156,10 +161,11 @@
                                    Foreground="{DynamicResource MenuForegroundBrush}"
                                    Text="{Binding DayName}" />
 
-                        <TextBlock Grid.Column="1"
-                                   VerticalAlignment="Center"
-                                   FontSize="16"
-                                   Text="{Binding Icon}" />
+                        <Image Grid.Column="1"
+                               Width="18"
+                               Height="18"
+                               VerticalAlignment="Center"
+                               Source="{Binding Icon, Converter={StaticResource WeatherIconConverter}}" />
 
                         <TextBlock Grid.Column="2"
                                    VerticalAlignment="Center"
