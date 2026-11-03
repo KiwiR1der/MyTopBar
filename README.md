@@ -14,11 +14,26 @@
 - **不抢焦点**：点击顶栏不会让当前窗口失焦，`WS_EX_NOACTIVATE` 实现
 - **配置持久化**：自动保存到 `%AppData%\MyTopBar\settings.json`
 - **设置窗口**：外观与组件改动即时生效，无需重启；天气参数点「应用并测试」后生效
+- **弹窗详情**：点击时钟看日历、点击天气看详情卡片，毛玻璃背景与顶栏一致
+- **开机自启**：设置里一键开关，写当前用户启动项，不需要管理员权限
 
 ## 预览
 
-<img width="1918" height="28" alt="image" src="https://github.com/user-attachments/assets/25a1f0c8-8fd3-46d8-a36a-af8a139fed3a" />
-<img width="1919" height="1030" alt="image" src="https://github.com/user-attachments/assets/b20e241b-a42b-4f35-b80e-d2b1e11eb14b" />
+![顶栏](docs/bar.png)
+
+深色主题下的顶栏：左区 Apple 菜单 + 前台应用名，中区歌词/文本，右区系统指标、天气、时钟与音量。
+
+<table>
+<tr>
+<td width="34%"><img src="docs/weather-popup.png" alt="天气详情弹窗" /></td>
+<td width="66%"><img src="docs/fullscreen-lyrics.jpg" alt="歌词组件" /></td>
+</tr>
+<tr>
+<td>点击天气组件弹出详情卡片：实时温度、体感/湿度/风速、日出日落与未来 3 天预报</td>
+<td>歌词组件跟随系统媒体会话（SMTC），播放时自动替换文本组件</td>
+</tr>
+</table>
+
 
 ## 布局
 
@@ -34,16 +49,22 @@
 | 网络 | 右 | `NetworkInterface` | 上下行实时速率 |
 | CPU | 右 | `GetSystemTimes` | 采样差值计算使用率 |
 | 内存 | 右 | `GlobalMemoryStatusEx` | 显示已用/总量 |
-| 天气 | 右 | 和风天气 GeoAPI + 实时天气 | 支持按城市名搜索，见下方配置 |
+| 天气 | 右 | 和风天气 GeoAPI + 实时天气 + 每日预报 | 彩色矢量图标；点击弹出详情卡片，见下方配置 |
 | 时钟 | 右 | 本地时间 | 对齐到整分刷新；点击弹出日历 |
 
 系统指标由单一定时器统一采样，供右区组件共享，不会为每个组件单独开计时器。
+
+天气图标不使用 emoji，而是把彩色 SVG 转成 WPF `DrawingImage`（见 `Assets/Icons/iconfont/WeatherIcons.xaml`）。
+Windows 的 emoji 字体在深色背景下会被字体回退渲染成单色轮廓，彩色渲染又依赖 DirectWrite 行为；
+矢量图标颜色固定、任意缩放不糊、深色背景下同样清晰。
 
 ## 交互
 
 - **点击 Apple 图标** → 系统菜单（关于本机 / 系统设置 / 睡眠 / 重启 / 关机 / 退出）
 - **点击时钟** → 日历弹窗
+- **点击天气** → 天气详情卡片（实时 + 未来 3 天预报）
 - **点击音量** → 音量滑块
+- **点击弹窗外部** → 自动收起（全局鼠标钩子；顶栏永不激活，拿不到 WPF 的失活事件）
 - **长按任意组件 3 秒** → 进入排序模式，左右拖动即可换位，松手自动保存
   （此时临时挂低级键盘钩子监听 Esc；常态下窗口不抢焦点，拿不到键盘）
 
@@ -105,8 +126,14 @@ dotnet run --project MyTopBar
 ```
 GET https://{ApiHost}/geo/v2/city/lookup?location={城市名}&number=10
 GET https://{ApiHost}/weather/v1/current/{lat}/{lon}?lang=zh
+GET https://{ApiHost}/weather/v1/daily/{lat}/{lon}?localTime=true&lang=zh&days=3
 X-QW-Api-Key: {ApiKey}
 ```
+
+顶栏只显示实时天气，详情卡片额外请求每日预报（`days=3`）。
+两个接口的数值字段都是 `{ "value": ..., "unit": ... }` 结构，
+`humidity` 是比例值（`0.69` 表示 69%），风速单位 `m/s`，日出的 `astro.sunrise` 是 ISO 时间——
+解析时需按实际结构处理，预报根字段是 `days[]` 而不是 `daily[]`。
 
 在设置窗口的「和风天气」区块里：
 
@@ -193,7 +220,8 @@ SetWindowCompositionAttribute(hwnd,
   回退 LRCLIB。纯音乐、小众本地曲目可能匹配不到；只有纯文本歌词时显示首行
 - **单显示器**：顶栏跟随窗口所在屏幕，未做多屏独立配置
 - **全屏应用**：未处理 `ABN_FULLSCREENAPP`，全屏视频/游戏时顶栏仍压在画面上
-- **未实现开机自启**
+- **开机自启**：写的是当前用户的 `HKCU\...\Run`，只在当前账号登录时生效；
+  未做 Windows 服务或计划任务方式，因此不支持「开机即启动、无需登录」
 
 ## 项目结构
 
@@ -201,18 +229,19 @@ SetWindowCompositionAttribute(hwnd,
 MyTopBar/
 ├── Assets/
 │   ├── Fonts/       HarmonyOS Sans SC
-│   └── Icons/       顶栏图标几何（Apple / 音量）
+│   └── Icons/       顶栏图标几何（Apple / 音量）+ iconfont/ 彩色天气图标
 ├── Infrastructure/
-│   ├── Common/      AppBarController（工作区占位）、PopupHost、AppLog
+│   ├── Common/      AppBarController（工作区占位）、PopupHost、AppLog、天气图标转换器
 │   ├── Interop/     Win32 P/Invoke 集中声明
 │   ├── Material/    材质说明
 │   └── Interfaces/  服务契约
 ├── Models/          数据模型与配置结构
-├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话
+├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话、开机自启
 ├── ViewModels/      主视图模型、弹窗视图模型、设置视图模型
-├── Views/           日历、音量、设置窗口
+├── Views/           日历、天气详情、音量、设置窗口
 ├── Widgets/         各组件视图模型 + 注册表 + 天气/城市搜索封装
 └── Styles/          主题、组件样式、设置窗口控件样式
+docs/                README 用截图
 ```
 
 ## 依赖
