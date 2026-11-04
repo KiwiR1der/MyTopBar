@@ -78,13 +78,19 @@
         </StackPanel>
     </DataTemplate>
 
-    <!--  右区：CPU / 内存 / 网络  -->
+    <!--  右区：CPU / 内存（可点击看详情） / 网络  -->
     <DataTemplate DataType="{x:Type widgets:CpuWidgetViewModel}">
-        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+        <TextBlock Cursor="Hand"
+                   Style="{StaticResource BarSecondaryText}"
+                   Text="{Binding Text}"
+                   ToolTip="点击查看 CPU 详情" />
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type widgets:MemoryWidgetViewModel}">
-        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+        <TextBlock Cursor="Hand"
+                   Style="{StaticResource BarSecondaryText}"
+                   Text="{Binding Text}"
+                   ToolTip="点击查看内存详情" />
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type widgets:NetworkWidgetViewModel}">

@@ -208,6 +208,44 @@
                         <views:WeatherPopupView />
                     </Border>
                 </Popup>
+
+                <!--  CPU / 内存详情弹窗：锚定右区面板，点击对应组件弹出  -->
+                <Popup x:Name="CpuDetailPopup"
+                       AllowsTransparency="True"
+                       CustomPopupPlacementCallback="RightAlignPopupCallback"
+                       Placement="Custom"
+                       PlacementTarget="{Binding ElementName=RightPanel}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False">
+                    <Border MinWidth="260"
+                            Padding="14,12"
+                            Background="{DynamicResource PopupGlassBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="12">
+                        <views:SystemDetailPopupView x:Name="CpuDetailView" />
+                    </Border>
+                </Popup>
+
+                <Popup x:Name="MemoryDetailPopup"
+                       AllowsTransparency="True"
+                       CustomPopupPlacementCallback="RightAlignPopupCallback"
+                       Placement="Custom"
+                       PlacementTarget="{Binding ElementName=RightPanel}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False">
+                    <Border MinWidth="260"
+                            Padding="14,12"
+                            Background="{DynamicResource PopupGlassBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="12">
+                        <views:SystemDetailPopupView x:Name="MemoryDetailView" />
+                    </Border>
+                </Popup>
+
                 <!--  音量在最右侧（最外），网络等指标在其内侧  -->
                 <Button x:Name="AudioButton"
                         Click="AudioButton_Click"

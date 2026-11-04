@@ -9,13 +9,15 @@
              mc:Ignorable="d">
     <UserControl.Resources>
         <common:WeatherIconConverter x:Key="WeatherIconConverter" />
+        <common:InverseBoolConverter x:Key="InverseBoolConverter" />
     </UserControl.Resources>
     <StackPanel>
 
-        <!--  顶部：地点 + 天气标签  -->
-        <Grid Margin="0,0,0,12">
+        <!--  顶部：地点 + 天气标签 + 刷新  -->
+        <Grid Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
@@ -27,6 +29,7 @@
                        Text="{Binding PlaceName}" />
 
             <Border Grid.Column="1"
+                    Margin="0,0,6,0"
                     Padding="10,4"
                     Background="{DynamicResource MenuHoverBrush}"
                     CornerRadius="12">
@@ -35,7 +38,36 @@
                            Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                            Text="{Binding ConditionText, StringFormat=现在 · {0}}" />
             </Border>
+
+            <Button Grid.Column="2"
+                    Width="28"
+                    Height="26"
+                    Command="{Binding RefreshWeatherCommand}"
+                    Cursor="Hand"
+                    FontSize="14"
+                    IsEnabled="{Binding IsRefreshing, Converter={StaticResource InverseBoolConverter}}"
+                    Style="{StaticResource AppleMenuButton}"
+                    ToolTip="立即刷新天气">
+                <TextBlock Text="⟳" />
+            </Button>
         </Grid>
+
+        <!--  刷新状态：有内容时才占位  -->
+        <TextBlock Margin="0,0,0,8"
+                   FontSize="11"
+                   Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                   Text="{Binding RefreshStatus}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding RefreshStatus}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
 
         <!--  大温度 + 图标  -->
         <Grid Margin="0,0,0,10">

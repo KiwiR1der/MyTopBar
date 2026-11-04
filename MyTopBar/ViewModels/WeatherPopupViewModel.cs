@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using MyTopBar.Services;
 using System.Collections.ObjectModel;
 
@@ -46,6 +47,12 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private string _sunset = "--";
 
+        [ObservableProperty]
+        private bool _isRefreshing;
+
+        [ObservableProperty]
+        private string _refreshStatus = string.Empty;
+
         public ObservableCollection<WeatherDataService.DailyForecast> Forecasts { get; } = [];
 
         public WeatherPopupViewModel(WeatherDataService data)
@@ -79,6 +86,38 @@ namespace MyTopBar.ViewModels
         {
             _data.DetailChanged -= OnDetailChanged;
             _data.DetailChanged += OnDetailChanged;
+            _data.RefreshCompleted -= OnRefreshCompleted;
+            _data.RefreshCompleted += OnRefreshCompleted;
+        }
+
+        [RelayCommand]
+        private void RefreshWeather()
+        {
+            if (IsRefreshing || _disposed)
+            {
+                return;
+            }
+
+            IsRefreshing = true;
+            RefreshStatus = "正在刷新…";
+            _data.RefreshNow();
+        }
+
+        private void OnRefreshCompleted(bool success)
+        {
+            IsRefreshing = false;
+            RefreshStatus = success ? "已更新" : "刷新失败，稍后重试";
+            if (success)
+            {
+                Refresh();
+            }
+        }
+
+        /// <summary>弹窗卸载时退订，避免数据源继续持有已不在屏幕上的 ViewModel。</summary>
+        public void Deactivate()
+        {
+            _data.DetailChanged -= OnDetailChanged;
+            _data.RefreshCompleted -= OnRefreshCompleted;
         }
 
         /// <summary>弹窗打开时调用，手动拉取最新数据。</summary>
@@ -106,12 +145,6 @@ namespace MyTopBar.ViewModels
         private void OnDetailChanged()
         {
             Refresh();
-        }
-
-        /// <summary>弹窗卸载时退订，避免数据源继续持有已不在屏幕上的 ViewModel。</summary>
-        public void Deactivate()
-        {
-            _data.DetailChanged -= OnDetailChanged;
         }
 
         public void Dispose()

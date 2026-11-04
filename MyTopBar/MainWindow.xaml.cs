@@ -26,6 +26,8 @@ namespace MyTopBar
         private readonly PopupHost _appleMenu;
         private readonly PopupHost _clockMenu;
         private readonly PopupHost _weatherMenu;
+        private readonly PopupHost _cpuDetailMenu;
+        private readonly PopupHost _memoryDetailMenu;
         private readonly PopupHost _audioMenu;
 
         private readonly DispatcherTimer _sortModeTimer = new();
@@ -54,6 +56,13 @@ namespace MyTopBar
             _clockMenu = new PopupHost(ClockPopup);
             _weatherMenu = new PopupHost(WeatherPopup);
             _audioMenu = new PopupHost(AudioPopup);
+
+            // CPU / 内存共用同一个视图类型，但各需一份独立的 ViewModel（数据源不同）。
+            var metrics = App.Current.Services.GetRequiredService<SystemMetricsService>();
+            CpuDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Cpu));
+            MemoryDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Memory));
+            _cpuDetailMenu = new PopupHost(CpuDetailPopup);
+            _memoryDetailMenu = new PopupHost(MemoryDetailPopup);
 
             SourceInitialized += OnSourceInitialized;
             Loaded += OnLoaded;
@@ -156,18 +165,25 @@ namespace MyTopBar
 
         private void AppleButton_Click(object sender, RoutedEventArgs e) => _appleMenu.Toggle();
 
-        /// <summary>点击右区组件：时钟→日历弹窗，天气→天气详情弹窗。</summary>
+        /// <summary>点击右区组件：时钟→日历、天气→天气卡片、CPU/内存→详情弹窗。</summary>
         private void OnRightItemsClick(object sender, MouseButtonEventArgs e)
         {
             if (e.OriginalSource is FrameworkElement fe)
             {
-                if (fe.DataContext is ClockWidgetViewModel)
+                switch (fe.DataContext)
                 {
-                    _clockMenu.Toggle();
-                }
-                else if (fe.DataContext is WeatherWidgetViewModel)
-                {
-                    _weatherMenu.Toggle();
+                    case ClockWidgetViewModel:
+                        _clockMenu.Toggle();
+                        break;
+                    case WeatherWidgetViewModel:
+                        _weatherMenu.Toggle();
+                        break;
+                    case CpuWidgetViewModel:
+                        _cpuDetailMenu.Toggle();
+                        break;
+                    case MemoryWidgetViewModel:
+                        _memoryDetailMenu.Toggle();
+                        break;
                 }
             }
         }

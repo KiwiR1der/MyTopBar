@@ -46,6 +46,12 @@ namespace MyTopBar.Services
         /// <summary>详情数据变化时触发（弹窗刷新用）。</summary>
         public event Action? DetailChanged;
 
+        /// <summary>手动刷新结束时触发，参数为是否成功（供弹窗反馈）。</summary>
+        public event Action<bool>? RefreshCompleted;
+
+        /// <summary>是否正在请求，避免用户连点刷新按钮造成并发请求。</summary>
+        public bool IsRefreshing { get; private set; }
+
         public WeatherDataService(HttpClient http, Dispatcher dispatcher, GlobalTickService tick)
         {
             _http = http;
@@ -129,100 +135,136 @@ namespace MyTopBar.Services
             System.Globalization.CultureInfo.InvariantCulture,
             out _);
 
-        private async Task RefreshAsync()
+        /// <summary>
+        /// 手动刷新（弹窗里的刷新按钮调用）。
+        /// 与定时刷新共用同一套逻辑，但会反馈完成结果，并防止并发请求。
+        /// </summary>
+        public void RefreshNow()
         {
-            if (!IsConfigured(out _))
+            if (IsRefreshing)
             {
                 return;
             }
 
+            IsRefreshing = true;
+            _ = RefreshAsync(manual: true);
+        }
+
+        private async Task RefreshAsync() => await RefreshAsync(manual: false);
+
+        private async Task RefreshAsync(bool manual)
+        {
+            bool success = false;
             try
             {
-                string host = _config.ApiHost.Trim().TrimEnd('/');
-                string lat = _config.Latitude.Trim();
-                string lon = _config.Longitude.Trim();
-
-                // localTime=true：返回本地时间（日出日落直接用），否则是 UTC。
-                var query = new List<string> { "localTime=true" };
-                if (!string.IsNullOrWhiteSpace(_config.Language))
-                {
-                    query.Add("lang=" + Uri.EscapeDataString(_config.Language.Trim()));
-                }
-                string queryString = "?" + string.Join("&", query);
-
-                // 实时天气
-                string currentUrl = $"https://{host}/weather/v1/current/{lat}/{lon}{queryString}";
-                using var currentRequest = new HttpRequestMessage(HttpMethod.Get, currentUrl);
-                currentRequest.Headers.TryAddWithoutValidation("X-QW-Api-Key", _config.ApiKey.Trim());
-
-                using HttpResponseMessage currentResponse = await _http
-                    .SendAsync(currentRequest, HttpCompletionOption.ResponseContentRead, CancellationToken.None)
-                    .ConfigureAwait(false);
-
-                if (!currentResponse.IsSuccessStatusCode)
+                if (!IsConfigured(out _))
                 {
                     return;
                 }
 
-                string currentJson = await currentResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                CurrentWeatherData? current = ParseCurrent(currentJson);
-                if (current is null)
-                {
-                    return;
-                }
-
-                // 3天预报
-                List<DailyForecast>? forecasts = null;
-                try
-                {
-                    // 天数是查询参数 days=3（默认 7 天），不是路径段。
-                    string forecastUrl = $"https://{host}/weather/v1/daily/{lat}/{lon}{queryString}&days=3";
-                    using var forecastRequest = new HttpRequestMessage(HttpMethod.Get, forecastUrl);
-                    forecastRequest.Headers.TryAddWithoutValidation("X-QW-Api-Key", _config.ApiKey.Trim());
-
-                    using HttpResponseMessage forecastResponse = await _http
-                        .SendAsync(forecastRequest, HttpCompletionOption.ResponseContentRead, CancellationToken.None)
-                        .ConfigureAwait(false);
-
-                    if (forecastResponse.IsSuccessStatusCode)
-                    {
-                        string forecastJson = await forecastResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        forecasts = ParseDailyForecast(forecastJson);
-                    }
-                }
-                catch
-                {
-                    // 预报失败不影响实时数据展示
-                }
-
-                _ = _dispatcher.BeginInvoke(() =>
-                {
-                    CurrentText = current.Display;
-                    CurrentIcon = current.Icon;
-                    ConditionText = current.Condition;
-                    Temperature = current.Temperature;
-                    FeelsLike = current.FeelsLike;
-                    Humidity = current.Humidity;
-                    WindInfo = current.WindInfo;
-                    PlaceName = _config.PlaceName;
-
-                    if (forecasts is { Count: > 0 })
-                    {
-                        Forecasts = forecasts;
-                        HighTemp = forecasts[0].High;
-                        LowTemp = forecasts[0].Low;
-                        Sunrise = forecasts[0].Sunrise;
-                        Sunset = forecasts[0].Sunset;
-                    }
-
-                    DataChanged?.Invoke(CurrentText, CurrentIcon);
-                    DetailChanged?.Invoke();
-                });
+                success = await FetchCoreAsync().ConfigureAwait(false);
             }
             catch
             {
                 // 网络失败保留上一次读数。
             }
+            finally
+            {
+                if (manual)
+                {
+                    _ = _dispatcher.BeginInvoke(() =>
+                    {
+                        IsRefreshing = false;
+                        RefreshCompleted?.Invoke(success);
+                    });
+                }
+            }
+        }
+
+        private async Task<bool> FetchCoreAsync()
+        {
+            string host = _config.ApiHost.Trim().TrimEnd('/');
+            string lat = _config.Latitude.Trim();
+            string lon = _config.Longitude.Trim();
+
+            // localTime=true：返回本地时间（日出日落直接用），否则是 UTC。
+            var query = new List<string> { "localTime=true" };
+            if (!string.IsNullOrWhiteSpace(_config.Language))
+            {
+                query.Add("lang=" + Uri.EscapeDataString(_config.Language.Trim()));
+            }
+            string queryString = "?" + string.Join("&", query);
+
+            // 实时天气
+            string currentUrl = $"https://{host}/weather/v1/current/{lat}/{lon}{queryString}";
+            using var currentRequest = new HttpRequestMessage(HttpMethod.Get, currentUrl);
+            currentRequest.Headers.TryAddWithoutValidation("X-QW-Api-Key", _config.ApiKey.Trim());
+
+            using HttpResponseMessage currentResponse = await _http
+                .SendAsync(currentRequest, HttpCompletionOption.ResponseContentRead, CancellationToken.None)
+                .ConfigureAwait(false);
+
+            if (!currentResponse.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            string currentJson = await currentResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            CurrentWeatherData? current = ParseCurrent(currentJson);
+            if (current is null)
+            {
+                return false;
+            }
+
+            // 3 天预报
+            List<DailyForecast>? forecasts = null;
+            try
+            {
+                // 天数是查询参数 days=3（默认 7 天），不是路径段。
+                string forecastUrl = $"https://{host}/weather/v1/daily/{lat}/{lon}{queryString}&days=3";
+                using var forecastRequest = new HttpRequestMessage(HttpMethod.Get, forecastUrl);
+                forecastRequest.Headers.TryAddWithoutValidation("X-QW-Api-Key", _config.ApiKey.Trim());
+
+                using HttpResponseMessage forecastResponse = await _http
+                    .SendAsync(forecastRequest, HttpCompletionOption.ResponseContentRead, CancellationToken.None)
+                    .ConfigureAwait(false);
+
+                if (forecastResponse.IsSuccessStatusCode)
+                {
+                    string forecastJson = await forecastResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    forecasts = ParseDailyForecast(forecastJson);
+                }
+            }
+            catch
+            {
+                // 预报失败不影响实时数据展示
+            }
+
+            _ = _dispatcher.BeginInvoke(() =>
+            {
+                CurrentText = current.Display;
+                CurrentIcon = current.Icon;
+                ConditionText = current.Condition;
+                Temperature = current.Temperature;
+                FeelsLike = current.FeelsLike;
+                Humidity = current.Humidity;
+                WindInfo = current.WindInfo;
+                PlaceName = _config.PlaceName;
+
+                if (forecasts is { Count: > 0 })
+                {
+                    Forecasts = forecasts;
+                    HighTemp = forecasts[0].High;
+                    LowTemp = forecasts[0].Low;
+                    Sunrise = forecasts[0].Sunrise;
+                    Sunset = forecasts[0].Sunset;
+                }
+
+                DataChanged?.Invoke(CurrentText, CurrentIcon);
+                DetailChanged?.Invoke();
+            });
+
+            return true;
         }
 
         /*
