@@ -18,12 +18,36 @@ namespace MyTopBar.ViewModels
         public AudioPopupViewModel(AudioService audioService)
         {
             _audioService = audioService;
+            Attach();
+        }
+
+        /// <summary>
+        /// 订阅系统音量并同步一次当前值。
+        ///
+        /// Popup.StaysOpen=False 关闭时 Child 会被摘出视觉树触发 Unloaded，
+        /// 再次打开又重新 Loaded。这里做成可重复调用，避免弹窗关过一次后
+        /// 就再也收不到系统音量变化。
+        /// </summary>
+        public void Activate()
+        {
+            Attach();
+        }
+
+        /// <summary>弹窗卸载时退订。</summary>
+        public void Deactivate()
+        {
+            _audioService.VolumeChanged -= OnSystemVolumeChanged;
+        }
+
+        private void Attach()
+        {
+            _audioService.VolumeChanged -= OnSystemVolumeChanged;
+            _audioService.VolumeChanged += OnSystemVolumeChanged;
+
             _syncing = true;
             Volume = _audioService.GetVolume();
             IsMuted = _audioService.IsMuted();
             _syncing = false;
-
-            _audioService.VolumeChanged += OnSystemVolumeChanged;
         }
 
         private void OnSystemVolumeChanged(float volume, bool muted)
@@ -61,7 +85,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _audioService.VolumeChanged -= OnSystemVolumeChanged;
+            Deactivate();
             _disposed = true;
         }
     }

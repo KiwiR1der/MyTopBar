@@ -51,8 +51,34 @@ namespace MyTopBar.ViewModels
         public WeatherPopupViewModel(WeatherDataService data)
         {
             _data = data;
-            _data.DetailChanged += OnDetailChanged;
+            Attach();
+            // 首次构造即填一次数据：某些宿主下 Loaded 可能延迟或不触发，
+            // 避免弹窗短暂显示全 "--"。
             Refresh();
+        }
+
+        /// <summary>
+        /// 重新订阅数据源并刷新一次。
+        ///
+        /// Popup 的 StaysOpen=False 会在关闭时把 Child 从视觉树摘掉并触发 Unloaded，
+        /// 再次打开又会 Loaded。若在 Unloaded 里只做退订而不提供重新订阅的入口，
+        /// 第二次打开弹窗后数据就不会再自动更新。所以这里做成可重复调用。
+        /// </summary>
+        public void Activate()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            Attach();
+            Refresh();
+        }
+
+        private void Attach()
+        {
+            _data.DetailChanged -= OnDetailChanged;
+            _data.DetailChanged += OnDetailChanged;
         }
 
         /// <summary>弹窗打开时调用，手动拉取最新数据。</summary>
@@ -82,13 +108,19 @@ namespace MyTopBar.ViewModels
             Refresh();
         }
 
+        /// <summary>弹窗卸载时退订，避免数据源继续持有已不在屏幕上的 ViewModel。</summary>
+        public void Deactivate()
+        {
+            _data.DetailChanged -= OnDetailChanged;
+        }
+
         public void Dispose()
         {
             if (_disposed)
             {
                 return;
             }
-            _data.DetailChanged -= OnDetailChanged;
+            Deactivate();
             _disposed = true;
         }
     }
