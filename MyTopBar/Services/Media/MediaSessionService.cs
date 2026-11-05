@@ -1,6 +1,8 @@
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Windows.Media.Control;
 using Windows.Media.Streaming;
+using Windows.Storage.Streams;
 
 namespace MyTopBar.Services.Media
 {
@@ -253,14 +255,18 @@ namespace MyTopBar.Services.Media
                     return;
                 }
 
+                string artist = props.Artist ?? string.Empty;
+                string album = props.AlbumTitle ?? string.Empty;
+
                 var snapshot = new MediaTrackInfo(
                     title,
-                    props.Artist ?? string.Empty,
-                    props.AlbumTitle ?? string.Empty,
+                    artist,
+                    album,
                     info?.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
                     timeline?.Position ?? TimeSpan.Zero,
                     (timeline?.EndTime ?? TimeSpan.Zero) - (timeline?.StartTime ?? TimeSpan.Zero),
-                    _session.SourceAppUserModelId ?? string.Empty);
+                    _session.SourceAppUserModelId ?? string.Empty,
+                    await ResolveArtworkAsync(props, title, artist, album));
 
                 RaiseTrackChanged(snapshot);
             }
@@ -269,6 +275,132 @@ namespace MyTopBar.Services.Media
                 // 播放器切歌瞬间可能抛异常，忽略即可
             }
         }
+
+        // 封面缓存：RefreshAsync 会被播放状态/进度变化频繁触发，
+        // 每次重新解码缩略图既慢又浪费内存，这里按曲目 key 缓存一份。
+        private BitmapImage? _artwork;
+        private string _artworkKey = string.Empty;
+
+        /// <summary>
+        /// 取当前曲目的封面。同一首歌复用已解码的 BitmapImage，
+        /// 切歌时用 DecodePixelWidth 缩到显示尺寸附近，避免加载原图。
+        /// </summary>
+        private async Task<BitmapImage?> ResolveArtworkAsync(
+            GlobalSystemMediaTransportControlsSessionMediaProperties props,
+            string title,
+            string artist,
+            string album)
+        {
+            string key = title + "\x01" + artist + "\x01" + album;
+            if (string.Equals(key, _artworkKey, StringComparison.Ordinal))
+            {
+                return _artwork;
+            }
+
+            _artworkKey = key;
+            _artwork = null;
+
+            try
+            {
+                IRandomAccessStreamReference? reference = props.Thumbnail;
+                if (reference is null)
+                {
+                    return null;
+                }
+
+                /*
+                 * WinRT 流桥接到 WPF 要绕开 System.Runtime.WindowsRuntime 的扩展方法
+                 * （AsStream / AsStreamForRead 在 net8.0-windows 目标下解析不到）。
+                 *
+                 * 改用 WinRT 原生的 DataReader 按字节读出，再喂给 MemoryStream：
+                 *   - ReadBytes 会自动推进流位置，不需要手动 Seek
+                 *   - 封面一般几十 KB，一次性读完代价很低
+                 *   - CacheOption=OnLoad 让 BitmapImage 不持有流，MemoryStream 可以立刻释放
+                 */
+                using IRandomAccessStreamWithContentType winrtStream = await reference.OpenReadAsync();
+
+                uint size = (uint)winrtStream.Size;
+                if (size == 0)
+                {
+                    return null;
+                }
+
+                byte[] buffer = new byte[size];
+                using (var reader = new DataReader(winrtStream))
+                {
+                    await reader.LoadAsync(size);
+                    reader.ReadBytes(buffer);
+                }
+
+                var memory = new System.IO.MemoryStream(buffer);
+
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = memory;
+                bitmap.EndInit();
+                bitmap.Freeze();
+                _artwork = bitmap;
+            }
+            catch
+            {
+                // 封面读取失败（部分播放器不提供缩略图）时留空，界面显示占位色块。
+            }
+
+            return _artwork;
+        }
+
+        #region 播放控制
+
+        /// <summary>播放 / 暂停切换。</summary>
+        public Task<bool> TogglePlayPauseAsync() => TrySendAsync(
+            static s => s.TryTogglePlayPauseAsync().AsTask());
+
+        /// <summary>上一首。</summary>
+        public Task<bool> PreviousAsync() => TrySendAsync(
+            static s => s.TrySkipPreviousAsync().AsTask());
+
+        /// <summary>下一首。</summary>
+        public Task<bool> NextAsync() => TrySendAsync(
+            static s => s.TrySkipNextAsync().AsTask());
+
+        /// <summary>
+        /// 试跳转到指定位置。
+        ///
+        /// 注意大部分播放器（含网易云）不支持 SMTC 跳转，
+        /// TryChangePlaybackPositionAsync 会返回 false，调用方据结果决定是否提示。
+        /// </summary>
+        public Task<bool> SeekAsync(TimeSpan position) => TrySendAsync(
+            s => s.TryChangePlaybackPositionAsync(position.Ticks).AsTask());
+
+        /// <summary>
+        /// 统一包装：会话为空或调用抛异常时返回 false，不向上冒泡。
+        /// 发送成功后主动刷新一次，让界面立刻反映新的播放状态。
+        /// </summary>
+        private async Task<bool> TrySendAsync(Func<GlobalSystemMediaTransportControlsSession, Task<bool>> action)
+        {
+            if (_disposed || _session is null)
+            {
+                return false;
+            }
+
+            try
+            {
+                bool ok = await action(_session);
+                if (ok)
+                {
+                    await RefreshAsync();
+                }
+
+                return ok;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
 
         private void RaiseTrackChanged(MediaTrackInfo? info)
         {

@@ -504,6 +504,27 @@
                               Content="启用一言（Text 组件使用一言 API）"
                               IsChecked="{Binding HitokotoEnabled, Mode=TwoWay}"
                               Style="{StaticResource SettingsCheckBox}" />
+
+                    <Separator Margin="0,12,0,12" Style="{StaticResource AppleMenuSeparator}" />
+
+                    <!--  日志目录入口  -->
+                    <TextBlock Style="{StaticResource SectionHeader}"
+                               FontSize="13"
+                               Text="诊断" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <Button Padding="12,5"
+                                Command="{Binding OpenLogDirectoryCommand}"
+                                Content="打开日志目录"
+                                Cursor="Hand"
+                                FontFamily="{StaticResource AppFont}"
+                                FontSize="13" />
+                        <TextBlock Margin="10,0,0,0"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource AppFont}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                                   Text="%AppData%\MyTopBar\logs\" />
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

@@ -29,6 +29,7 @@ namespace MyTopBar
         private readonly PopupHost _cpuDetailMenu;
         private readonly PopupHost _memoryDetailMenu;
         private readonly PopupHost _audioMenu;
+        private readonly PopupHost _mediaControlMenu;
 
         private readonly DispatcherTimer _sortModeTimer = new();
         private Point _pressOrigin;
@@ -52,10 +53,12 @@ namespace MyTopBar
             Height = height;
 
             _appBarController = new AppBarController(this, AppBarController.AppBarEdge.Top, height);
+            _appBarController.FullScreenAppChanged += OnFullScreenAppChanged;
             _appleMenu = new PopupHost(AppleMenuPopup);
             _clockMenu = new PopupHost(ClockPopup);
             _weatherMenu = new PopupHost(WeatherPopup);
             _audioMenu = new PopupHost(AudioPopup);
+            _mediaControlMenu = new PopupHost(MediaControlPopup);
 
             // CPU / 内存共用同一个视图类型，但各需一份独立的 ViewModel（数据源不同）。
             var metrics = App.Current.Services.GetRequiredService<SystemMetricsService>();
@@ -117,6 +120,45 @@ namespace MyTopBar
         }
 
         /// <summary>
+        /// 全屏应用进入 / 退出时显隐顶栏。
+        ///
+        /// macOS 的菜单栏在全屏应用下会自动收起，这里对齐这个行为——
+        /// 否则全屏看视频、玩游戏时，顶栏会一直压在画面顶端。
+        ///
+        /// 用 Visibility 而不是 Window.Hide()：
+        ///   - Hide() 会让 WPF 卸载整个视觉树，恢复时组件要重新布局、重新取数，
+        ///     表现为顶栏闪一下、歌词/天气短暂空白
+        ///   - Visibility.Hidden 只是让窗口不被绘制，布局和绑定都保持，
+        ///     恢复时是无闪现的
+        ///
+        /// 窗口本身不能真正关闭或注销 AppBar：工作区占位要保留，
+        /// 否则退出全屏的瞬间系统会把工作区还给最大化窗口，再收缩一次，
+        /// 屏幕内容会明显跳一下。
+        /// </summary>
+        private void OnFullScreenAppChanged(object? sender, bool isFullScreen)
+        {
+            /*
+             * 进入全屏前先把所有弹窗收掉。
+             * 顶栏隐藏后弹窗仍会浮在最上层（Popup 是独立 HWND），
+             * 用户在全屏画面里看到一块孤零零的日历/音量面板，很怪。
+             */
+            if (isFullScreen)
+            {
+                _appleMenu.Close();
+                _clockMenu.Close();
+                _weatherMenu.Close();
+                _audioMenu.Close();
+                _mediaControlMenu.Close();
+                _cpuDetailMenu.Close();
+                _memoryDetailMenu.Close();
+            }
+
+            Visibility = isFullScreen ? Visibility.Hidden : Visibility.Visible;
+
+            AppLog.Info(isFullScreen ? "检测到全屏应用，隐藏顶栏" : "全屏应用退出，恢复顶栏");
+        }
+
+        /// <summary>
         /// 应用毛玻璃：委托给 GlassEffect。
         /// 材质固定为 BLURBEHIND 的理由见 GlassEffect / MaterialInfo 的注释。
         /// </summary>
@@ -148,6 +190,7 @@ namespace MyTopBar
 
         private void OnClosed(object? sender, EventArgs e)
         {
+            _appBarController.FullScreenAppChanged -= OnFullScreenAppChanged;
             _theme.ThemeChanged -= OnThemeChanged;
             _viewModel.AppearanceChanged -= OnAppearanceChanged;
             _sortModeTimer.Stop();
@@ -185,6 +228,20 @@ namespace MyTopBar
                         _memoryDetailMenu.Toggle();
                         break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 点击中区歌词组件 → 弹出媒体控制浮窗。
+        ///
+        /// 只在歌词组件在场时响应：无播放时中区显示的是文本/一言，
+        /// 那时点一下弹出一个「无播放」的空窗没有意义。
+        /// </summary>
+        private void OnCenterItemsClick(object sender, MouseButtonEventArgs e)
+        {
+            if (ResolveWidget(e.OriginalSource as DependencyObject) is LyricsWidgetViewModel)
+            {
+                _mediaControlMenu.Toggle();
             }
         }
 
@@ -294,7 +351,7 @@ namespace MyTopBar
         /// <summary>排序模式期间监听 Esc，不依赖窗口焦点。</summary>
         private void InstallEscapeHook()
         {
-            if (_escapeHook == IntPtr.Zero)
+            if (_escapeHook != IntPtr.Zero)
             {
                 return;
             }

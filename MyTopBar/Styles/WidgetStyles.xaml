@@ -42,9 +42,15 @@
                    ToolTip="点击查看日历" />
     </DataTemplate>
 
-    <!--  中区：歌词（行切换时淡入，FadeTextBlock 自带 150ms 动画）  -->
+    <!--
+        中区：歌词（行切换时淡入，FadeTextBlock 自带 150ms 动画）
+        Cursor="Hand" 提示可点击 —— 点击弹出媒体控制浮窗。
+    -->
     <DataTemplate DataType="{x:Type widgets:LyricsWidgetViewModel}">
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel Cursor="Hand"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    ToolTip="点击打开播放控制">
             <controls:FadeTextBlock MaxWidth="320"
                                     Style="{StaticResource BarText}"
                                     Text="{Binding Text}" />

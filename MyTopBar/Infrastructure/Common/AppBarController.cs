@@ -23,6 +23,9 @@ namespace MyTopBar.Infrastructure.Common
                                                     // 设置应用栏的位置和大小。
         private const uint ABN_POSCHANGED = 0x00000001; // Notifies an appbar that its position or size has changed.
                                                         // 通知应用栏其位置或大小已更改。
+        private const uint ABN_FULLSCREENAPP = 0x00000002; // Notifies an appbar when a full screen application is opening or closing.
+                                                           // 全屏应用打开或关闭时通知应用栏。
+                                                           // lParam 非 0 表示进入全屏，0 表示退出。
         private const int WM_DESTROY = 0x0002; // Sent when a window is being destroyed.
                                                // 当窗口被销毁时发送。
         private const int WM_DISPLAYCHANGE = 0x007E;   // Sent to all windows when the display resolution has changed.
@@ -61,6 +64,15 @@ namespace MyTopBar.Infrastructure.Common
         public double Thickness { get; private set; }
 
         public bool IsRegistered => _isRegistered;
+
+        /// <summary>
+        /// 全屏应用状态变化。参数为 true 表示有全屏应用进入，
+        /// false 表示退出全屏、可以恢复显示。
+        /// </summary>
+        public event EventHandler<bool>? FullScreenAppChanged;
+
+        /// <summary>当前是否处于「有全屏应用」状态。</summary>
+        public bool IsFullScreenAppActive { get; private set; }
 
         public AppBarController(Window window, AppBarEdge edge, double thickness)
         {
@@ -270,6 +282,34 @@ namespace MyTopBar.Infrastructure.Common
             }
         }
 
+        /// <summary>
+        /// 处理 ABN_FULLSCREENAPP 通知。
+        ///
+        /// 只更新状态并广播事件，窗口的显隐由 MainWindow 决定 ——
+        /// AppBarController 不该知道 WPF 窗口的 Visibility 细节。
+        ///
+        /// 退出全屏后必须重新 PositionAppBar()：全屏期间 Shell 会把工作区
+        /// 让给全屏窗口，AppBar 记录的位置可能已被改写，不重新 SETPOS
+        /// 会导致顶栏尺寸/位置错乱（例如只显示一半高度）。
+        /// </summary>
+        private void HandleFullScreenApp(bool isFullScreen)
+        {
+            if (IsFullScreenAppActive == isFullScreen)
+            {
+                // Shell 可能重复发同一状态，幂等处理避免事件风暴。
+                return;
+            }
+
+            IsFullScreenAppActive = isFullScreen;
+            FullScreenAppChanged?.Invoke(this, isFullScreen);
+
+            if (!isFullScreen)
+            {
+                // 退出全屏：把工作区占位重新算一遍。
+                RequestPositionUpdate();
+            }
+        }
+
         private void RequestPositionUpdate()
         {
             if (_positionPending || _disposed)
@@ -300,9 +340,21 @@ namespace MyTopBar.Infrastructure.Common
                 if (notification == ABN_POSCHANGED)
                 {
                     // The position of the appbar has changed, so we need to reposition it.
-                    RequestPositionUpdate();
+                    // 全屏期间不复位：那时工作区被全屏窗口占满，
+                    // 强行 SETPOS 会把顶栏重新摆出来，盖在画面上。
+                    if (!IsFullScreenAppActive)
+                    {
+                        RequestPositionUpdate();
+                    }
+
                     handled = true;
                 }
+                else if (notification == ABN_FULLSCREENAPP)
+                {
+                    HandleFullScreenApp(lParam != IntPtr.Zero);
+                    handled = true;
+                }
+
                 return IntPtr.Zero;
             }
 

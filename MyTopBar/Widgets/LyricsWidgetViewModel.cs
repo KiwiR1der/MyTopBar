@@ -295,20 +295,35 @@ namespace MyTopBar.Widgets
 
         /// <summary>
         /// 查询歌词。优先带时间轴，取不到时退回纯文本。
+        /// 命中磁盘缓存时直接返回，跳过网络请求。
         /// </summary>
         private static async Task<LrcResult> FetchLrcAsync(string rawTitle, string artist)
         {
             string title = CleanTitle(rawTitle);
 
+            // 0) 磁盘缓存：同一首歌重启后无需再次请求网络。
+            Services.Lyrics.LyricsCacheEntry? cached = Services.Lyrics.LyricsCache.TryRead(title, artist);
+            if (cached is not null)
+            {
+                return new LrcResult(cached.Value.Lrc, cached.Value.IsSynced);
+            }
+
             // 1) 网易云：中文曲库覆盖最好，《写给黄淮》这类歌只有它有。
             LrcResult netease = await TryNeteaseAsync(title, artist).ConfigureAwait(false);
             if (!netease.IsEmpty)
             {
+                Services.Lyrics.LyricsCache.Write(title, artist, netease.Lrc, netease.IsSynced);
                 return netease;
             }
 
             // 2) LRCLIB：国际曲库，作为回退。
-            return await TryLrclibAsync(title, artist).ConfigureAwait(false);
+            LrcResult lrclib = await TryLrclibAsync(title, artist).ConfigureAwait(false);
+            if (!lrclib.IsEmpty)
+            {
+                Services.Lyrics.LyricsCache.Write(title, artist, lrclib.Lrc, lrclib.IsSynced);
+            }
+
+            return lrclib;
         }
 
         /// <summary>LRCLIB：先精确匹配，再搜索。</summary>

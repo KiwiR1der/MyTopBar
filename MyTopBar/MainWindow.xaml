@@ -126,9 +126,15 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Orientation="Horizontal">
+                <!--
+                    点击歌词组件弹出媒体控制浮窗。
+                    用 PreviewMouseLeftButtonUp 而不是 Click：中区是模板化内容，
+                    没有按钮可挂，只能在容器上拦。
+                -->
                 <ItemsControl x:Name="CenterItems"
                               ItemTemplateSelector="{x:Null}"
-                              ItemsSource="{Binding CenterWidgets}">
+                              ItemsSource="{Binding CenterWidgets}"
+                              PreviewMouseLeftButtonUp="OnCenterItemsClick">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
@@ -141,6 +147,30 @@
                         </Style>
                     </ItemsControl.ItemContainerStyle>
                 </ItemsControl>
+
+                <!--
+                    媒体控制弹窗：锚定中区面板。
+                    中区只有歌词组件在场时才可能弹出（点击歌词触发），
+                    所以这里按中区居中对齐，不像右区那样右对齐。
+                -->
+                <Popup x:Name="MediaControlPopup"
+                       AllowsTransparency="True"
+                       HorizontalOffset="0"
+                       Placement="Bottom"
+                       PlacementTarget="{Binding ElementName=CenterPanel}"
+                       PopupAnimation="Fade"
+                       StaysOpen="False"
+                       VerticalOffset="6">
+                    <Border MinWidth="280"
+                            Padding="14,12"
+                            Background="{DynamicResource PopupGlassBrush}"
+                            BorderBrush="{DynamicResource MenuBorderBrush}"
+                            BorderThickness="1"
+                            ClipToBounds="False"
+                            CornerRadius="12">
+                        <views:MediaControlPopupView />
+                    </Border>
+                </Popup>
 
             </StackPanel>
 

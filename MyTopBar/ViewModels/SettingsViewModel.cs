@@ -5,7 +5,9 @@ using MyTopBar.Models.Settings;
 using MyTopBar.Services;
 using MyTopBar.Widgets;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 
 namespace MyTopBar.ViewModels
@@ -515,6 +517,30 @@ namespace MyTopBar.ViewModels
             {
                 // 成功后让顶栏按新配置刷新。
                 SettingsApplied?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// 用资源管理器打开日志目录，方便排查问题。
+        /// 目录不存在时先创建（确保首次点击也能打开）。
+        /// </summary>
+        [RelayCommand]
+        private void OpenLogDirectory()
+        {
+            string logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MyTopBar",
+                "logs");
+
+            try
+            {
+                Directory.CreateDirectory(logDir);
+                Process.Start("explorer.exe", logDir);
+            }
+            catch (Exception ex)
+            {
+                Infrastructure.Common.AppLog.Error("打开日志目录失败", ex);
+                MessageBox.Show($"无法打开日志目录：{logDir}", "MyTopBar", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }
