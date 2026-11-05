@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MyTopBar.Infrastructure.Material;
+using MyTopBar.Infrastructure.Common;
 using MyTopBar.Models.Settings;
 using MyTopBar.Services;
 using MyTopBar.Widgets;
@@ -561,10 +561,8 @@ namespace MyTopBar.ViewModels
         [RelayCommand]
         private void OpenLogDirectory()
         {
-            string logDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "MyTopBar",
-                "logs");
+            // 和 AppLog 用同一个来源，避免「按钮打开的目录」和「日志实际写入的目录」不一致。
+            string logDir = AppPaths.LogDirectory;
 
             try
             {

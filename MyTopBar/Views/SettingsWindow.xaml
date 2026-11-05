@@ -547,7 +547,7 @@
                                    FontFamily="{StaticResource AppFont}"
                                    FontSize="12"
                                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                   Text="%AppData%\MyTopBar\logs\" />
+                                   Text="程序目录\logs\" />
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

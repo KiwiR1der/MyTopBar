@@ -1,13 +1,15 @@
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models.Settings;
 
 namespace MyTopBar.Services
 {
     /// <summary>
-    /// settings.json 的读写。写入采用 500ms 防抖，退出时强制刷盘。
+    /// settings.json 的读写。文件放在程序所在目录（便携式），写入采用 500ms 防抖，
+    /// 退出时强制刷盘。
     /// </summary>
     public sealed class SettingsService : IDisposable
     {
@@ -24,6 +26,15 @@ namespace MyTopBar.Services
         /// </summary>
         private static readonly System.Text.UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
+        /// <summary>
+        /// 旧版本把配置写在 %AppData%\MyTopBar\settings.json。
+        /// 新位置找不到文件时会从这里复制一份过来，作为一次性迁移。
+        /// </summary>
+        private static readonly string LegacyFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "MyTopBar",
+            "settings.json");
+
         private readonly string _filePath;
         private readonly object _gate = new();
         private System.Threading.Timer? _debounceTimer;
@@ -31,13 +42,18 @@ namespace MyTopBar.Services
 
         public SettingsService()
         {
-            string directory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "MyTopBar");
-            _filePath = Path.Combine(directory, "settings.json");
-            Directory.CreateDirectory(directory);
+            /*
+             * 配置跟着程序走：放在 exe 所在目录，而不是 %AppData%。
+             * 目录来源统一在 AppPaths 里定义，和 logs\clips\lyrics\ 共用同一套规则。
+             */
+            _filePath = AppPaths.SettingsFile;
 
             bool existed = File.Exists(_filePath);
+            if (!existed)
+            {
+                existed = TryMigrateFromLegacyPath();
+            }
+
             Current = Load();
 
             /*
@@ -54,6 +70,30 @@ namespace MyTopBar.Services
             else if (NeedsRewrite)
             {
                 Flush();
+            }
+        }
+
+        /// <summary>
+        /// 旧位置存在配置时复制到程序目录。只复制，不删除旧文件，
+        /// 避免回退到旧版本后配置丢失。
+        /// </summary>
+        /// <returns>复制成功返回 true。</returns>
+        private bool TryMigrateFromLegacyPath()
+        {
+            try
+            {
+                if (!File.Exists(LegacyFilePath))
+                {
+                    return false;
+                }
+
+                File.Copy(LegacyFilePath, _filePath, overwrite: false);
+                return true;
+            }
+            catch (Exception)
+            {
+                // 旧文件读不到或程序目录不可写，退回默认配置即可，不该阻止启动。
+                return false;
             }
         }
 

@@ -4,7 +4,7 @@ using System.Text;
 namespace MyTopBar.Infrastructure.Common
 {
     /// <summary>
-    /// 极简落地日志：写 %AppData%\MyTopBar\logs\yyyy-MM-dd.log。
+    /// 极简落地日志：写程序目录下的 logs\yyyy-MM-dd.log。
     /// 顶栏是常驻进程，出问题时用户没法看控制台，只能翻文件。
     /// 写日志本身不允许抛异常，否则会把"记录崩溃"变成"引发崩溃"。
     ///
@@ -13,10 +13,7 @@ namespace MyTopBar.Infrastructure.Common
     public static class AppLog
     {
         private static readonly object Gate = new();
-        private static readonly string LogDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "MyTopBar",
-            "logs");
+        private static readonly string LogDirectory = AppPaths.LogDirectory;
 
         /// <summary>日志保留天数。</summary>
         private const int RetentionDays = 7;

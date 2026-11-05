@@ -41,7 +41,7 @@ namespace MyTopBar.Services
     /// 给注册窗口发 WM_CLIPBOARDUPDATE，比轮询 Clipboard.GetText 便宜得多，
     /// 也不会因为别的进程占用剪贴板而抛异常。
     ///
-    /// 存储：只把最近 N 条放内存，图片另存 PNG 到 %AppData%\MyTopBar\clips\。
+    /// 存储：只把最近 N 条放内存，图片另存 PNG 到程序目录下的 clips\。
     /// 不做跨会话持久化 —— 剪贴板历史属于敏感数据，落盘越少越好。
     /// </summary>
     public sealed class ClipboardHistoryService : ObservableObject, IDisposable
@@ -66,10 +66,7 @@ namespace MyTopBar.Services
         public ClipboardHistoryService(Dispatcher dispatcher)
         {
             _dispatcher = dispatcher;
-            _imageDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "MyTopBar",
-                "clips");
+            _imageDirectory = AppPaths.ClipDirectory;
         }
 
         /// <summary>

@@ -8,7 +8,7 @@ namespace MyTopBar.Services.Lyrics
     /// <summary>
     /// 歌词磁盘缓存。
     ///
-    /// 路径：%AppData%\MyTopBar\lyrics\{key}.lrc
+    /// 路径：程序目录\lyrics\{key}.lrc
     /// key 是 "title\x01artist" 的 SHA256 十六进制，避免文件名非法字符。
     ///
     /// 缓存不设 TTL：LRC 文件本身不会变，磁盘占用极小（每首歌几 KB），
@@ -16,10 +16,7 @@ namespace MyTopBar.Services.Lyrics
     /// </summary>
     internal static class LyricsCache
     {
-        private static readonly string CacheDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "MyTopBar",
-            "lyrics");
+        private static readonly string CacheDirectory = AppPaths.LyricsDirectory;
 
         private const int MaxFiles = 500;
 
