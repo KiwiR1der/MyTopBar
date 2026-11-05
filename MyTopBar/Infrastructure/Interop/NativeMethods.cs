@@ -358,6 +358,10 @@ namespace MyTopBar.Infrastructure.Interop
             int cy,
             uint uFlags);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool IsWindow(IntPtr hWnd);
+
         /// <summary>取当前光标所在的屏幕坐标（物理像素）。</summary>
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

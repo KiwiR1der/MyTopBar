@@ -23,13 +23,22 @@ namespace MyTopBar
         private readonly MainViewModel _viewModel;
         private readonly SettingsService _settings;
         private readonly ThemeService _theme;
-        private readonly PopupHost _appleMenu;
-        private readonly PopupHost _clockMenu;
-        private readonly PopupHost _weatherMenu;
-        private readonly PopupHost _cpuDetailMenu;
-        private readonly PopupHost _memoryDetailMenu;
-        private readonly PopupHost _audioMenu;
-        private readonly PopupHost _mediaControlMenu;
+
+        /*
+         * 7 个顶栏弹窗。全部是独立 Window（PopupWindow），
+         * 位置在打开时按锚点元素一次算准，之后不再移动。
+         */
+        private readonly Views.PopupWindow _appleMenu;
+        private readonly Views.PopupWindow _clockMenu;
+        private readonly Views.PopupWindow _weatherMenu;
+        private readonly Views.PopupWindow _cpuDetailMenu;
+        private readonly Views.PopupWindow _memoryDetailMenu;
+        private readonly Views.PopupWindow _audioMenu;
+        private readonly Views.PopupWindow _mediaControlMenu;
+
+        /// <summary>CPU / 内存详情视图。原先挂在 XAML 的 Popup 里，现在手动创建。</summary>
+        private readonly Views.SystemDetailPopupView _cpuDetailView;
+        private readonly Views.SystemDetailPopupView _memoryDetailView;
 
         private readonly Views.SidebarWindow _sidebar;
         private readonly EdgeTriggerService _edge;
@@ -57,18 +66,65 @@ namespace MyTopBar
 
             _appBarController = new AppBarController(this, AppBarController.AppBarEdge.Top, height);
             _appBarController.FullScreenAppChanged += OnFullScreenAppChanged;
-            _appleMenu = new PopupHost(AppleMenuPopup);
-            _clockMenu = new PopupHost(ClockPopup);
-            _weatherMenu = new PopupHost(WeatherPopup);
-            _audioMenu = new PopupHost(AudioPopup);
-            _mediaControlMenu = new PopupHost(MediaControlPopup);
+
+            /*
+             * 创建 7 个弹窗窗口。
+             *
+             * 参数顺序：内容控件、内边距、圆角、最小宽度 —— 与原 XAML 里
+             * 每个 Popup 的 Border 设置逐项对应，保证视觉与改造前一致。
+             */
+            _appleMenu = new Views.PopupWindow(
+                new Views.AppleMenuView { DataContext = _viewModel },
+                new Thickness(6, 4, 6, 4), cornerRadius: 10, minWidth: 220);
+
+            _clockMenu = new Views.PopupWindow(
+                new Views.CalendarPopup(),
+                new Thickness(10, 8, 10, 8), cornerRadius: 10, minWidth: 248);
+
+            _weatherMenu = new Views.PopupWindow(
+                new Views.WeatherPopupView(),
+                new Thickness(14, 12, 14, 12), cornerRadius: 14, minWidth: 280);
+
+            /*
+             * 右区四个弹窗统一右对齐到「显示器右边 - 20」。
+             *
+             * 20 = 顶栏外层 Grid 的水平 Margin(12) + 音量按钮的 Padding(8)，
+             * 这样弹窗右边缘正好对齐顶栏最右侧可见文字的右端。
+             *
+             * 不用 RightPanel 当基准：它在 SharedSizeGroup 列里，
+             * 宽度会随中区内容（歌词/一言切换）变化，
+             * 结果同一个弹窗每次打开位置都不一样。
+             */
+            const double BarSideMargin = 20;
+
+            _clockMenu.FixedRightMargin = BarSideMargin;
+            _weatherMenu.FixedRightMargin = BarSideMargin;
+
+            _audioMenu = new Views.PopupWindow(
+                new Views.AudioPopupView(),
+                new Thickness(10, 8, 10, 8), cornerRadius: 10, minWidth: 248);
+
+            _mediaControlMenu = new Views.PopupWindow(
+                new Views.MediaControlPopupView(),
+                new Thickness(14, 12, 14, 12), cornerRadius: 12, minWidth: 280);
 
             // CPU / 内存共用同一个视图类型，但各需一份独立的 ViewModel（数据源不同）。
             var metrics = App.Current.Services.GetRequiredService<SystemMetricsService>();
-            CpuDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Cpu));
-            MemoryDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Memory));
-            _cpuDetailMenu = new PopupHost(CpuDetailPopup);
-            _memoryDetailMenu = new PopupHost(MemoryDetailPopup);
+            _cpuDetailView = new Views.SystemDetailPopupView();
+            _memoryDetailView = new Views.SystemDetailPopupView();
+            _cpuDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Cpu));
+            _memoryDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Memory));
+
+            _cpuDetailMenu = new Views.PopupWindow(
+                _cpuDetailView,
+                new Thickness(14, 12, 14, 12), cornerRadius: 12, minWidth: 260);
+
+            _memoryDetailMenu = new Views.PopupWindow(
+                _memoryDetailView,
+                new Thickness(14, 12, 14, 12), cornerRadius: 12, minWidth: 260);
+
+            _cpuDetailMenu.FixedRightMargin = BarSideMargin;
+            _memoryDetailMenu.FixedRightMargin = BarSideMargin;
 
             // 侧边栏与边缘触发。窗口先建好但不显示，滑出时再展开。
             _sidebar = new Views.SidebarWindow();
@@ -158,13 +214,13 @@ namespace MyTopBar
              */
             if (isFullScreen)
             {
-                _appleMenu.Close();
-                _clockMenu.Close();
-                _weatherMenu.Close();
-                _audioMenu.Close();
-                _mediaControlMenu.Close();
-                _cpuDetailMenu.Close();
-                _memoryDetailMenu.Close();
+                _appleMenu.Collapse();
+                _clockMenu.Collapse();
+                _weatherMenu.Collapse();
+                _audioMenu.Collapse();
+                _mediaControlMenu.Collapse();
+                _cpuDetailMenu.Collapse();
+                _memoryDetailMenu.Collapse();
             }
 
             Visibility = isFullScreen ? Visibility.Hidden : Visibility.Visible;
@@ -349,28 +405,35 @@ namespace MyTopBar
             _viewModel.Dispose();
         }
 
-        private void AppleButton_Click(object sender, RoutedEventArgs e) => _appleMenu.Toggle();
+        private void AppleButton_Click(object sender, RoutedEventArgs e)
+            => _appleMenu.ToggleAround(AppleButton, Views.PopupAlignment.BottomLeft);
 
         /// <summary>点击右区组件：时钟→日历、天气→天气卡片、CPU/内存→详情弹窗。</summary>
         private void OnRightItemsClick(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is FrameworkElement fe)
+            if (e.OriginalSource is not FrameworkElement fe)
             {
-                switch (fe.DataContext)
-                {
-                    case ClockWidgetViewModel:
-                        _clockMenu.Toggle();
-                        break;
-                    case WeatherWidgetViewModel:
-                        _weatherMenu.Toggle();
-                        break;
-                    case CpuWidgetViewModel:
-                        _cpuDetailMenu.Toggle();
-                        break;
-                    case MemoryWidgetViewModel:
-                        _memoryDetailMenu.Toggle();
-                        break;
-                }
+                return;
+            }
+
+            /*
+             * 右区四个弹窗都右对齐到 RightPanel，与原 CustomPopupPlacementCallback
+             * 的效果一致（弹窗右边缘贴住右区面板右边缘）。
+             */
+            switch (fe.DataContext)
+            {
+                case ClockWidgetViewModel:
+                    _clockMenu.ToggleAround(RightPanel, Views.PopupAlignment.BottomRight);
+                    break;
+                case WeatherWidgetViewModel:
+                    _weatherMenu.ToggleAround(RightPanel, Views.PopupAlignment.BottomRight);
+                    break;
+                case CpuWidgetViewModel:
+                    _cpuDetailMenu.ToggleAround(RightPanel, Views.PopupAlignment.BottomRight);
+                    break;
+                case MemoryWidgetViewModel:
+                    _memoryDetailMenu.ToggleAround(RightPanel, Views.PopupAlignment.BottomRight);
+                    break;
             }
         }
 
@@ -384,23 +447,13 @@ namespace MyTopBar
         {
             if (ResolveWidget(e.OriginalSource as DependencyObject) is LyricsWidgetViewModel)
             {
-                _mediaControlMenu.Toggle();
+                _mediaControlMenu.ToggleAround(CenterPanel, Views.PopupAlignment.BottomCenter);
             }
         }
 
-        private void AudioButton_Click(object sender, RoutedEventArgs e) => _audioMenu.Toggle();
+        private void AudioButton_Click(object sender, RoutedEventArgs e)
+            => _audioMenu.ToggleAround(AudioButton, Views.PopupAlignment.BottomLeft);
 
-        /// <summary>
-        /// 自定义弹窗定位：右边缘对齐 PlacementTarget 右边缘，顶部出现在其下方 6px。
-        /// 解决 Placement="Bottom" 默认左对齐导致弹窗偏左的问题。
-        /// </summary>
-        private CustomPopupPlacement[] RightAlignPopupCallback(Size popupSize, Size targetSize, Point offset)
-        {
-            // 右对齐：x = 目标宽度 - 弹窗宽度；y = 目标高度 + 6px 间距
-            double x = targetSize.Width - popupSize.Width;
-            double y = targetSize.Height + 6;
-            return [new CustomPopupPlacement(new Point(x, y), PopupPrimaryAxis.Horizontal)];
-        }
 
         #region 拖动排序（按住左键 3 秒进入排序模式）
 

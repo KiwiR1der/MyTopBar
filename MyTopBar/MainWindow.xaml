@@ -73,47 +73,6 @@
                            Text="{Binding CurrentAppName}"
                            ToolTip="{Binding CurrentWindowTitle}" />
 
-                <Popup x:Name="AppleMenuPopup"
-                       AllowsTransparency="True"
-                       HorizontalOffset="-4"
-                       Placement="Bottom"
-                       PlacementTarget="{Binding ElementName=AppleButton}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False"
-                       VerticalOffset="6">
-                    <Border Width="220"
-                            Padding="6,4"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="10">
-                        <StackPanel>
-                            <Button Command="{Binding AboutThisPcCommand}"
-                                    Content="关于本机"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Button Command="{Binding OpenSettingsCommand}"
-                                    Content="系统设置"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Button Command="{Binding OpenBarSettingsCommand}"
-                                    Content="MyTopBar 设置…"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Separator Style="{StaticResource AppleMenuSeparator}" />
-                            <Button Command="{Binding SleepCommand}"
-                                    Content="睡眠"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Button Command="{Binding RestartCommand}"
-                                    Content="重新启动…"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Button Command="{Binding ShutdownCommand}"
-                                    Content="关机…"
-                                    Style="{StaticResource AppleMenuItem}" />
-                            <Separator Style="{StaticResource AppleMenuSeparator}" />
-                            <Button Command="{Binding ExitCommand}"
-                                    Content="退出 MyTopBar"
-                                    Style="{StaticResource AppleMenuItem}" />
-                        </StackPanel>
-                    </Border>
-                </Popup>
             </StackPanel>
 
             <!--  中区：歌词 / 天气 / 时钟 / 文本  -->
@@ -147,31 +106,6 @@
                         </Style>
                     </ItemsControl.ItemContainerStyle>
                 </ItemsControl>
-
-                <!--
-                    媒体控制弹窗：锚定中区面板。
-                    中区只有歌词组件在场时才可能弹出（点击歌词触发），
-                    所以这里按中区居中对齐，不像右区那样右对齐。
-                -->
-                <Popup x:Name="MediaControlPopup"
-                       AllowsTransparency="True"
-                       HorizontalOffset="0"
-                       Placement="Bottom"
-                       PlacementTarget="{Binding ElementName=CenterPanel}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False"
-                       VerticalOffset="6">
-                    <Border MinWidth="280"
-                            Padding="14,12"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="12">
-                        <views:MediaControlPopupView />
-                    </Border>
-                </Popup>
-
             </StackPanel>
 
             <!--  右区：音量 + CPU / 内存 / 网络  -->
@@ -201,82 +135,6 @@
                     </ItemsControl>
                 </Grid>
 
-                <!--  时钟日历弹窗：锚定右区面板，点击时钟区域弹出  -->
-                <Popup x:Name="ClockPopup"
-                       AllowsTransparency="True"
-                       CustomPopupPlacementCallback="RightAlignPopupCallback"
-                       Placement="Custom"
-                       PlacementTarget="{Binding ElementName=RightPanel}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False">
-                    <Border MinWidth="248"
-                            Padding="10,8"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="10">
-                        <views:CalendarPopup />
-                    </Border>
-                </Popup>
-
-                <!--  天气详情弹窗：锚定右区面板，点击天气组件弹出  -->
-                <Popup x:Name="WeatherPopup"
-                       AllowsTransparency="True"
-                       CustomPopupPlacementCallback="RightAlignPopupCallback"
-                       Placement="Custom"
-                       PlacementTarget="{Binding ElementName=RightPanel}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False">
-                    <Border MinWidth="280"
-                            Padding="14,12"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="14">
-                        <views:WeatherPopupView />
-                    </Border>
-                </Popup>
-
-                <!--  CPU / 内存详情弹窗：锚定右区面板，点击对应组件弹出  -->
-                <Popup x:Name="CpuDetailPopup"
-                       AllowsTransparency="True"
-                       CustomPopupPlacementCallback="RightAlignPopupCallback"
-                       Placement="Custom"
-                       PlacementTarget="{Binding ElementName=RightPanel}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False">
-                    <Border MinWidth="260"
-                            Padding="14,12"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="12">
-                        <views:SystemDetailPopupView x:Name="CpuDetailView" />
-                    </Border>
-                </Popup>
-
-                <Popup x:Name="MemoryDetailPopup"
-                       AllowsTransparency="True"
-                       CustomPopupPlacementCallback="RightAlignPopupCallback"
-                       Placement="Custom"
-                       PlacementTarget="{Binding ElementName=RightPanel}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False">
-                    <Border MinWidth="260"
-                            Padding="14,12"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="12">
-                        <views:SystemDetailPopupView x:Name="MemoryDetailView" />
-                    </Border>
-                </Popup>
-
-                <!--  音量在最右侧（最外），网络等指标在其内侧  -->
                 <Button x:Name="AudioButton"
                         Click="AudioButton_Click"
                         Style="{StaticResource AppleMenuButton}">
@@ -294,24 +152,6 @@
                     </StackPanel>
                 </Button>
 
-                <Popup x:Name="AudioPopup"
-                       AllowsTransparency="True"
-                       HorizontalOffset="-4"
-                       Placement="Bottom"
-                       PlacementTarget="{Binding ElementName=AudioButton}"
-                       PopupAnimation="Fade"
-                       StaysOpen="False"
-                       VerticalOffset="6">
-                    <Border MinWidth="248"
-                            Padding="10,8"
-                            Background="{DynamicResource PopupGlassBrush}"
-                            BorderBrush="{DynamicResource MenuBorderBrush}"
-                            BorderThickness="1"
-                            ClipToBounds="False"
-                            CornerRadius="10">
-                        <views:AudioPopupView />
-                    </Border>
-                </Popup>
             </StackPanel>
         </Grid>
     </Grid>

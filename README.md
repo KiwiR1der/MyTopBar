@@ -27,19 +27,13 @@
 
 深色主题下的顶栏：左区 Apple 菜单 + 前台应用名，中区歌词/文本，右区系统指标、天气、时钟与音量。
 
-<table>
-<tr>
-<td width="34%"><img src="docs/weather-popup.png" alt="天气详情弹窗" /></td>
-<td width="66%"><img src="docs/fullscreen-lyrics.jpg" alt="歌词组件" /></td>
-</tr>
-<tr>
-<td>点击天气组件弹出详情卡片：实时温度、体感/湿度/风速、日出日落与未来 3 天预报</td>
-<td>歌词组件跟随系统媒体会话（SMTC），播放时自动替换文本组件</td>
-</tr>
-</table>
+<img src="docs/fullscreen-lyrics.jpg" alt="歌词组件" />
 
-点击歌词还能弹出播放控制浮窗：专辑封面、曲目信息、进度条与上一首 / 播放暂停 / 下一首。
+歌词组件跟随系统媒体会话（SMTC），播放时自动替换文本组件,点击歌词还能弹出播放控制浮窗：专辑封面、曲目信息、进度条与上一首 / 播放暂停 / 下一首。
 
+<img width="32%" src="docs/weather-popup.png" alt="天气详情弹窗" />
+
+点击天气组件弹出详情卡片：实时温度、体感/湿度/风速、日出日落与未来 3 天预报
 
 ## 布局
 
@@ -71,7 +65,7 @@ Windows 的 emoji 字体在深色背景下会被字体回退渲染成单色轮�
 - **点击天气** → 天气详情卡片（实时 + 未来 3 天预报）
 - **点击歌词** → 播放控制浮窗（封面 / 上一首 / 播放暂停 / 下一首 / 进度条）
 - **点击音量** → 音量滑块
-- **点击弹窗外部** → 自动收起（全局鼠标钩子；顶栏永不激活，拿不到 WPF 的失活事件）
+- **点击弹窗外部** → 自动收起（弹窗是独立 Window，靠 `Deactivated` 收起，关闭时归还原窗口焦点）
 - **长按任意组件 3 秒** → 进入排序模式，左右拖动即可换位，松手自动保存
   （此时临时挂低级键盘钩子监听 Esc；常态下窗口不抢焦点，拿不到键盘）
 - **鼠标移到屏幕左边缘** → 滑出剪贴板历史侧边栏，点任一条即写回剪贴板并收起
@@ -201,7 +195,7 @@ X-QW-Api-Key: {ApiKey}
 ### 边缘滑出侧边栏
 
 检测方式**没有用** `WH_MOUSE_LL`：低级鼠标钩子会让系统每一次鼠标移动都同步回调到本进程，
-常驻监听会拖慢整机响应（顶栏的「点外部收起」只在弹窗打开期间短暂挂钩子，代价可接受）。
+常驻监听会拖慢整机响应（顶栏弹窗用 `Window.Deactivated` 收起，不挂任何钩子）。
 改用 `GlobalTickService` 上 200ms 一次的光标轮询，`GetCursorPos` 极轻量。
 
 触发参数：热区宽度 3px、停留 220ms 才滑出（快速划过不触发）、离开 400ms 后收起。
@@ -220,6 +214,26 @@ Shell 判定为全屏应用（触发 `ABN_FULLSCREENAPP` 把顶栏藏起来）�
 比轮询 `Clipboard.GetText` 便宜。抓取前延迟 120ms：某些应用（浏览器复制图片）
 在消息到达时数据还没准备好。历史只存内存，图片另存 PNG 到
 `%AppData%\MyTopBar\clips\`，删条目时同步删文件。
+
+### 弹窗改用独立窗口
+
+7 个顶栏弹窗（Apple 菜单、时钟、天气、音量、媒体控制、CPU/内存详情）从 WPF `Popup`
+改成了独立的 `Window`（[PopupWindow.cs](MyTopBar/Views/PopupWindow.cs)）。
+
+原因是 `Popup` 的位置依赖 `PlacementTarget`，无法精确控制，且弹出层归主窗口托管。
+换成 Window 后自己按锚点元素算位置，打开时一次算准、之后不移动。
+
+三个必须处理的细节：
+
+- **弹窗必须可激活**：非激活窗口收不到 `Deactivated`，无法用失活收起。
+  为了不破坏「点顶栏不抢焦点」，打开前记住原前台窗口，收起时用 `ForceForeground` 还回去
+- **用 `Hide()` 而不是 `Close()`**：`Window.Close()` 会销毁 HWND，之后 `Show()`
+  直接抛 `InvalidOperationException`。弹窗要反复开关，只能隐藏不销毁
+- **右区弹窗用固定右边距**：`RightPanel` 在 `SharedSizeGroup` 列里，宽度会随中区内容
+  变化（歌词 ↔ 一言切换），拿它当基准会导致同一个弹窗每次打开位置都不一样。
+  改为对齐「显示器右边缘 - 20」（20 = 顶栏 Margin 12 + 按钮 Padding 8）
+
+内容仍是各自的 `UserControl`，与窗体分离，便于同一视图复用（CPU / 内存共用一份视图类型）。
 
 ### 毛玻璃实现
 
@@ -282,7 +296,7 @@ MyTopBar/
 │   ├── Fonts/       HarmonyOS Sans SC
 │   └── Icons/       顶栏图标几何（Apple / 音量）+ iconfont/ 彩色天气图标
 ├── Infrastructure/
-│   ├── Common/      AppBarController（工作区占位）、PopupHost、AppLog、天气图标转换器
+│   ├── Common/      AppBarController（工作区占位）、AppLog、天气图标转换器
 │   ├── Interop/     Win32 P/Invoke 集中声明
 │   ├── Material/    材质说明
 │   └── Interfaces/  服务契约
@@ -291,7 +305,7 @@ MyTopBar/
 │   ├── Lyrics/      LRC 解析与歌词磁盘缓存
 │   └── Media/       SMTC 会话、曲目快照与播放控制
 ├── ViewModels/      主视图模型、弹窗视图模型（含播放控制）、设置视图模型
-├── Views/           日历、天气详情、音量、播放控制、侧边栏、设置窗口
+├── Views/           日历、天气详情、音量、播放控制、Apple 菜单、PopupWindow、侧边栏、设置窗口
 ├── Widgets/         各组件视图模型 + 注册表 + 天气/城市搜索封装
 └── Styles/          主题、组件样式、设置窗口控件样式
 docs/                README 用截图

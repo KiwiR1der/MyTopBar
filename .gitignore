@@ -361,5 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# JetBrains Rider / IntelliJ
+.idea/
+
 # Task planning artifacts
 .pi/
