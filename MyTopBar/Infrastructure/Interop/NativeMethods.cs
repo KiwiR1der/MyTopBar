@@ -336,6 +336,107 @@ namespace MyTopBar.Infrastructure.Interop
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX buffer);
 
+        #region 侧边栏：光标位置与窗口定位
+
+        public const int WS_EX_TOPMOST_L = 0x00000008;
+
+        /// <summary>置顶插入位置常量（HWND_TOPMOST = -1）。</summary>
+        public static readonly IntPtr HWND_TOPMOST = new(-1);
+
+        public const uint SWP_NOMOVE = 0x0002;
+        public const uint SWP_NOSIZE = 0x0001;
+        public const uint SWP_NOACTIVATE = 0x0010;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(
+            IntPtr hWnd,
+            IntPtr hWndInsertAfter,
+            int X,
+            int Y,
+            int cx,
+            int cy,
+            uint uFlags);
+
+        /// <summary>取当前光标所在的屏幕坐标（物理像素）。</summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetCursorPos(out POINT pt);
+
+        /// <summary>取主显示器的屏幕矩形（物理像素，含任务栏区域）。</summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        public const uint MONITOR_DEFAULTTONEAREST_L = 0x00000002;
+
+        /// <summary>取光标所在显示器的完整矩形，用于判断是否贴近屏幕边缘。</summary>
+        public static bool TryGetMonitorRectAtCursor(out RECT rect)
+        {
+            rect = default;
+
+            if (!GetCursorPos(out POINT pt))
+            {
+                return false;
+            }
+
+            IntPtr monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST_L);
+            if (monitor == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var info = new MONITORINFOEX
+            {
+                cbSize = (uint)Marshal.SizeOf<MONITORINFOEX>()
+            };
+
+            if (!GetMonitorInfo(monitor, ref info))
+            {
+                return false;
+            }
+
+            rect = info.rcMonitor;
+            return true;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct MONITORINFOEX
+        {
+            public uint cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string szDevice;
+        }
+
+        /*
+         * 正确的导出名是 GetMonitorInfoW / GetMonitorInfoA，
+         * 没有 GetMonitorInfoEx 这个导出（MONITORINFOEXW 结构是通过
+         * GetMonitorInfoW 传进去的，不是靠函数名区分）。
+         *
+         * 之前写成 GetMonitorInfoEx 会抛 EntryPointNotFoundException，
+         * 被全局异常处理器吞掉后 OnLoaded 后续的 _edge.Start() 不执行，
+         * 表现为「边缘完全没反应」。
+         *
+         * CharSet=Unicode 让 GetMonitorInfo 自动映射到 GetMonitorInfoW。
+         */
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "GetMonitorInfoW")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+        #endregion
+
         #endregion
     }
 }

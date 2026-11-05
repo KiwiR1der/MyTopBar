@@ -157,7 +157,6 @@ namespace MyTopBar.ViewModels
             AppearanceChanged?.Invoke(this, EventArgs.Empty);
         }
 
-
         [RelayCommand]
         private void Shutdown()
         {

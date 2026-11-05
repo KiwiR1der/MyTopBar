@@ -1,0 +1,204 @@
+<Window x:Class="MyTopBar.Views.SidebarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="MyTopBar Sidebar"
+        Width="300"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Background="Transparent"
+        FontFamily="{StaticResource AppFont}"
+        ResizeMode="NoResize"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Ideal"
+        Topmost="True"
+        UseLayoutRounding="True"
+        WindowStartupLocation="Manual"
+        mc:Ignorable="d">
+
+    <!--
+        与顶栏一致：本层必须完全透明，否则 WPF 自己的背景会把毛玻璃盖住。
+        CompositionTarget.BackgroundColor 在两个时机各设一次，见 code-behind。
+    -->
+    <Grid x:Name="RootGrid" Background="Transparent">
+
+        <!--
+            面板本体：宽度动画实现滑出。
+            窗口本身只有 PanelWidth 宽，所以这里不再需要左侧的「点外部收起」透明区——
+            那个设计会让窗口铺满屏幕，进而被 Shell 误判为全屏应用、把顶栏藏起来。
+        -->
+        <Border x:Name="Panel"
+                Width="0"
+                HorizontalAlignment="Left"
+                Background="{DynamicResource PopupGlassBrush}"
+                BorderBrush="{DynamicResource MenuBorderBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid x:Name="PanelContent" Opacity="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!--  =====  头部  =====  -->
+                <Grid Margin="16,14,10,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock VerticalAlignment="Center"
+                               FontSize="15"
+                               FontWeight="{StaticResource FontWeightHeading}"
+                               Foreground="{DynamicResource MenuForegroundBrush}"
+                               Text="剪贴板" />
+
+                    <!--  钉住：钉住后光标离开不自动收起  -->
+                    <ToggleButton x:Name="PinButton"
+                                  Grid.Column="1"
+                                  Width="28"
+                                  Height="28"
+                                  VerticalAlignment="Center"
+                                  Cursor="Hand"
+                                  FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                  FontSize="13"
+                                  IsChecked="{Binding IsPinned, Mode=TwoWay}"
+                                  Style="{StaticResource SidebarIconToggle}"
+                                  ToolTip="钉住面板"
+                                  Content="&#xE718;" />
+
+                    <Button Grid.Column="2"
+                            Width="28"
+                            Height="28"
+                            VerticalAlignment="Center"
+                            Click="OnCloseClick"
+                            Content="&#xE711;"
+                            Cursor="Hand"
+                            FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                            FontSize="13"
+                            Style="{StaticResource SidebarIconButton}"
+                            ToolTip="关闭" />
+                </Grid>
+
+                <!--  =====  内容：剪贴板历史列表  =====  -->
+                <Grid Grid.Row="1">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="10,0,10,0">
+                        <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6"
+                                            Padding="10,8"
+                                            Background="{DynamicResource InputBackgroundBrush}"
+                                            BorderBrush="{DynamicResource InputBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="7"
+                                            Cursor="Hand"
+                                            MouseLeftButtonUp="OnClipItemClick">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Opacity" Value="0.8" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!--  图片条目的缩略图  -->
+                                            <Border Grid.Column="0"
+                                                    MaxWidth="72"
+                                                    MaxHeight="72"
+                                                    Margin="0,0,8,0"
+                                                    VerticalAlignment="Center"
+                                                    ClipToBounds="True"
+                                                    CornerRadius="4">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsImage}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock FontSize="12.5"
+                                                           Foreground="{DynamicResource MenuForegroundBrush}"
+                                                           Text="{Binding Preview}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="MaxHeight" Value="38" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsImage}" Value="True">
+                                                                    <Setter Property="MaxHeight" Value="20" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <TextBlock Margin="0,4,0,0"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                                                           Opacity="0.7"
+                                                           Text="{Binding TimeText}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!--  空状态  -->
+                    <TextBlock HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="12.5"
+                               Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                               Text="复制点什么试试">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasItems}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <!--  =====  底部：清空  =====  -->
+                <Button Grid.Row="2"
+                        Margin="10,6,10,12"
+                        Padding="10,6"
+                        HorizontalAlignment="Stretch"
+                        Click="OnClearClick"
+                        Content="清空历史"
+                        Cursor="Hand"
+                        FontFamily="{StaticResource AppFont}"
+                        FontSize="12"
+                        Style="{StaticResource SidebarTextButton}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

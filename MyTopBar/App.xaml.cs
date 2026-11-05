@@ -31,6 +31,18 @@ namespace MyTopBar
         public App()
         {
             Services = ConfigureServices();
+
+            /*
+             * 必须显式指定退出模式。
+             *
+             * 默认的 OnLastWindowClose 在多窗口场景下会误判：
+             * 侧边栏收起时调 Hide()，WPF 若认为「已无可见窗口」就会触发
+             * Shutdown()，表现为滑出一次后整个进程消失。
+             * 顶栏本身带 WS_EX_NOACTIVATE，从不参与激活，更容易被误判。
+             *
+             * 换成 OnExplicitShutdown，只由「退出 MyTopBar」菜单调 Shutdown()。
+             */
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
         }
 
         protected override void OnStartup(StartupEventArgs e)
@@ -122,6 +134,8 @@ namespace MyTopBar
             services.AddSingleton<GlobalTickService>();
             services.AddSingleton<SystemMetricsService>();
             services.AddSingleton<MediaSessionService>();
+            services.AddSingleton<ClipboardHistoryService>();
+            services.AddSingleton<EdgeTriggerService>();
             services.AddSingleton<WidgetRegistry>();
 
             // 组件数据源（Step A：渲染与数据解耦）

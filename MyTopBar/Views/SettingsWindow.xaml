@@ -507,6 +507,30 @@
 
                     <Separator Margin="0,12,0,12" Style="{StaticResource AppleMenuSeparator}" />
 
+                    <!--  =====  屏幕边缘侧边栏  =====  -->
+                    <TextBlock Style="{StaticResource SectionHeader}"
+                               FontSize="13"
+                               Text="侧边栏" />
+
+                    <CheckBox Margin="2,0,0,6"
+                              Content="启用屏幕左边缘滑出"
+                              IsChecked="{Binding SidebarEnabled, Mode=TwoWay}"
+                              Style="{StaticResource SettingsCheckBox}" />
+
+                    <CheckBox Margin="24,0,0,6"
+                              Content="滑出后钉住（不随光标离开自动收起）"
+                              IsChecked="{Binding SidebarPinOnOpen, Mode=TwoWay}"
+                              Style="{StaticResource SettingsCheckBox}" />
+
+                    <TextBlock Margin="24,0,0,14"
+                               Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
+                               FontFamily="{StaticResource AppFont}"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Text="把鼠标移到屏幕最左侧停留约 0.2 秒即可滑出剪贴板历史。点面板外的区域收起。" />
+
+                    <Separator Margin="0,0,0,12" Style="{StaticResource AppleMenuSeparator}" />
+
                     <!--  日志目录入口  -->
                     <TextBlock Style="{StaticResource SectionHeader}"
                                FontSize="13"

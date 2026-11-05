@@ -105,6 +105,12 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private bool _launchAtStartup;
 
+        [ObservableProperty]
+        private bool _sidebarEnabled;
+
+        [ObservableProperty]
+        private bool _sidebarPinOnOpen;
+
         /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
@@ -152,6 +158,8 @@ namespace MyTopBar.ViewModels
 
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
             _launchAtStartup = StartupService.IsEnabled();
+            _sidebarEnabled = current.Sidebar.Enabled;
+            _sidebarPinOnOpen = current.Sidebar.PinOnOpen;
 
             InitMediaSources(current.Lyrics.SourceAppId, lyrics);
 
@@ -315,6 +323,32 @@ namespace MyTopBar.ViewModels
                 _launchAtStartup = actual;
                 OnPropertyChanged(nameof(LaunchAtStartup));
             }
+        }
+
+        /// <summary>
+        /// 侧边栏开关：写回配置并让顶栏立即重启边缘检测，无需重启应用。
+        /// </summary>
+        partial void OnSidebarEnabledChanged(bool value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Sidebar.Enabled = value;
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        partial void OnSidebarPinOnOpenChanged(bool value)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            _settings.Current.Sidebar.PinOnOpen = value;
+            _settings.Save();
         }
 
         /// <summary>

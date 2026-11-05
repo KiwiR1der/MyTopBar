@@ -31,6 +31,9 @@ namespace MyTopBar
         private readonly PopupHost _audioMenu;
         private readonly PopupHost _mediaControlMenu;
 
+        private readonly Views.SidebarWindow _sidebar;
+        private readonly EdgeTriggerService _edge;
+
         private readonly DispatcherTimer _sortModeTimer = new();
         private Point _pressOrigin;
         private bool _isSortMode;
@@ -66,6 +69,14 @@ namespace MyTopBar
             MemoryDetailView.Attach(new SystemDetailViewModel(metrics, Dispatcher, SystemDetailViewModel.DetailKind.Memory));
             _cpuDetailMenu = new PopupHost(CpuDetailPopup);
             _memoryDetailMenu = new PopupHost(MemoryDetailPopup);
+
+            // 侧边栏与边缘触发。窗口先建好但不显示，滑出时再展开。
+            _sidebar = new Views.SidebarWindow();
+            _sidebar.OpenStateChanged += OnSidebarOpenStateChanged;
+
+            _edge = App.Current.Services.GetRequiredService<EdgeTriggerService>();
+            _edge.EdgeActivated += OnEdgeActivated;
+            _edge.EdgeDismissed += OnEdgeDismissed;
 
             SourceInitialized += OnSourceInitialized;
             Loaded += OnLoaded;
@@ -117,6 +128,9 @@ namespace MyTopBar
                 Height = height;
                 _appBarController.SetThickness(height);
             }
+
+            // 设置里可能刚改了侧边栏开关，同步启停边缘检测。
+            RestartSidebar();
         }
 
         /// <summary>
@@ -158,6 +172,125 @@ namespace MyTopBar
             AppLog.Info(isFullScreen ? "检测到全屏应用，隐藏顶栏" : "全屏应用退出，恢复顶栏");
         }
 
+        #region 屏幕边缘侧边栏
+
+        /// <summary>
+        /// 按配置启动侧边栏与边缘检测。
+        ///
+        /// 剪贴板监听只要侧边栏功能开着就启动 —— 这样用户第一次滑出时
+        /// 列表里已经有最近复制过的东西，而不是空的。
+        /// </summary>
+        private void StartSidebar()
+        {
+            Models.Settings.SidebarSettings config = _settings.Current.Sidebar;
+
+            ClipboardHistoryService clips = App.Current.Services.GetRequiredService<ClipboardHistoryService>();
+            clips.MaxItems = Math.Clamp(config.MaxClipItems, 5, 200);
+
+            if (!config.Enabled)
+            {
+                return;
+            }
+
+            clips.Start();
+
+            _sidebar.BarHeightDip = Math.Clamp(_settings.Current.Appearance.BarHeight, 28, 40);
+
+            _edge.IsEnabled = true;
+            _edge.HoldOpen = config.PinOnOpen;
+            _edge.PanelWidthPx = (int)Math.Ceiling(300 * GetDpiScale());
+            _edge.BarHeightPx = (int)Math.Ceiling(_sidebar.BarHeightDip * GetDpiScale());
+            _edge.Start();
+
+            if (config.PinOnOpen)
+            {
+                _sidebar.IsPinned = true;
+            }
+        }
+
+        /// <summary>当前窗口的 DPI 缩放比，用于把 DIP 换算成物理像素。</summary>
+        private double GetDpiScale()
+        {
+            if (PresentationSource.FromVisual(this) is HwndSource source
+                && source.CompositionTarget is not null)
+            {
+                double scale = source.CompositionTarget.TransformToDevice.M11;
+                if (scale > 0)
+                {
+                    return scale;
+                }
+            }
+
+            return 1.0;
+        }
+
+        /// <summary>设置窗口里改动侧边栏开关后调用。</summary>
+        public void RestartSidebar()
+        {
+            _edge.Stop();
+            _edge.IsEnabled = false;
+
+            if (_sidebar.IsOpen)
+            {
+                _sidebar.Collapse();
+            }
+
+            StartSidebar();
+        }
+
+        private void OnEdgeActivated(object? sender, EventArgs e)
+        {
+            if (!_edge.Suspended)
+            {
+                _sidebar.Open();
+            }
+        }
+
+        private void OnEdgeDismissed(object? sender, EventArgs e)
+        {
+            if (!_sidebar.IsPinned)
+            {
+                _sidebar.Collapse();
+            }
+        }
+
+        /// <summary>
+        /// 侧边栏开合时同步触发服务的状态。
+        ///
+        /// 面板开着期间必须 HoldOpen，否则光标移进面板本身会被判为
+        /// 「离开边缘」，刚滑出来就自己收回去。
+        /// </summary>
+        private void OnSidebarOpenStateChanged(object? sender, bool isOpen)
+        {
+            // 动画期间暂停判定，避免宽度变化过程中反复触发。
+            _edge.Suspended = true;
+
+            /*
+             * 两个状态必须分开：
+             *   IsPanelOpen —— 面板开着，光标在面板矩形内算「还在里面」
+             *   HoldOpen    —— 用户钉住了，光标离开也不收
+             * 早期这里写成 HoldOpen = isOpen || IsPinned，导致面板一开就
+             * 永不收起（收起分支被 HoldOpen 挡住）。
+             */
+            _edge.IsPanelOpen = isOpen;
+            _edge.HoldOpen = _sidebar.IsPinned;
+
+            var timer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(260)
+            };
+
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                _edge.Suspended = false;
+            };
+
+            timer.Start();
+        }
+
+        #endregion
+
         /// <summary>
         /// 应用毛玻璃：委托给 GlassEffect。
         /// 材质固定为 BLURBEHIND 的理由见 GlassEffect / MaterialInfo 的注释。
@@ -170,6 +303,7 @@ namespace MyTopBar
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _viewModel.Start();
+            StartSidebar();
             HookSortGestures();
 
             // 句柄在 Loaded 阶段一定有效。
@@ -191,6 +325,15 @@ namespace MyTopBar
         private void OnClosed(object? sender, EventArgs e)
         {
             _appBarController.FullScreenAppChanged -= OnFullScreenAppChanged;
+
+            _edge.EdgeActivated -= OnEdgeActivated;
+            _edge.EdgeDismissed -= OnEdgeDismissed;
+            _edge.Stop();
+
+            _sidebar.OpenStateChanged -= OnSidebarOpenStateChanged;
+
+            // 应用退出：真正销毁侧边栏窗口，而不只是收起面板。
+            _sidebar.Close();
             _theme.ThemeChanged -= OnThemeChanged;
             _viewModel.AppearanceChanged -= OnAppearanceChanged;
             _sortModeTimer.Stop();

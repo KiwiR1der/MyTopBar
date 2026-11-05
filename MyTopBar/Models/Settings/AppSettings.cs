@@ -65,6 +65,27 @@ namespace MyTopBar.Models.Settings
         public int IntervalMinutes { get; set; } = 30;
     }
 
+    /// <summary>
+    /// 屏幕边缘侧边栏设置。
+    ///
+    /// 侧边栏里暂放剪贴板历史——这是「从边缘滑出」这个交互最自然的用途：
+    /// 复制完东西想马上用，不需要切窗口。
+    /// </summary>
+    public sealed class SidebarSettings
+    {
+        /// <summary>是否启用边缘滑出。</summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>滑出后是否钉住（不随光标离开自动收起）。</summary>
+        public bool PinOnOpen { get; set; }
+
+        /// <summary>
+        /// 保留最近的剪贴板块数上限。
+        /// 图片体积大，太多会占满磁盘。
+        /// </summary>
+        public int MaxClipItems { get; set; } = 30;
+    }
+
     /// <summary>和风天气的身份认证方式。</summary>
     public enum QWeatherAuthMode
     {
@@ -162,6 +183,8 @@ namespace MyTopBar.Models.Settings
         public ApiSettings Api { get; set; } = new();
 
         public LyricsSettings Lyrics { get; set; } = new();
+
+        public SidebarSettings Sidebar { get; set; } = new();
 
         public MetricsSettings Metrics { get; set; } = new();
     }
