@@ -15,11 +15,20 @@ namespace MyTopBar.ViewModels
     /// <summary>
     /// 设置窗口。所有改动即时生效并落盘。
     /// </summary>
-    public sealed partial class SettingsViewModel : ObservableObject
+    public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     {
+        private bool _disposed;
+
         private readonly SettingsService _settings;
         private readonly ThemeService _theme;
         private readonly Widgets.LyricsWidgetViewModel _lyrics;
+        private readonly Infrastructure.Interfaces.IDialogService _dialogs;
+
+        /// <summary>
+        /// 待退订的委托。transient VM 订阅单例服务时统一登记在这里，
+        /// 由 <see cref="Dispose"/> 集中撤销，避免新增订阅时漏写退订。
+        /// </summary>
+        private readonly List<Action> _subscriptions = new();
 
         /// <summary>
         /// 构造期间为 true。此时通过属性赋值只是为了把配置同步到界面，
@@ -104,13 +113,6 @@ namespace MyTopBar.ViewModels
 
         [ObservableProperty]
         private bool _launchAtStartup;
-
-        [ObservableProperty]
-        private bool _sidebarEnabled;
-
-        [ObservableProperty]
-        private bool _sidebarPinOnOpen;
-
         /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
@@ -128,12 +130,14 @@ namespace MyTopBar.ViewModels
         public SettingsViewModel(
             SettingsService settings,
             ThemeService theme,
-            Widgets.WidgetRegistry registry,
-            Widgets.LyricsWidgetViewModel lyrics)
+            WidgetRegistry registry,
+            LyricsWidgetViewModel lyrics,
+            Infrastructure.Interfaces.IDialogService dialogs)
         {
             _settings = settings;
             _theme = theme;
             _lyrics = lyrics;
+            _dialogs = dialogs;
 
             AppSettings current = settings.Current;
             _selectedTheme = ThemeModes.FirstOrDefault(t => t.Mode == current.Appearance.Theme) ?? ThemeModes[0];
@@ -158,8 +162,6 @@ namespace MyTopBar.ViewModels
 
             _hitokotoEnabled = current.Api.Hitokoto.Enabled;
             _launchAtStartup = StartupService.IsEnabled();
-            _sidebarEnabled = current.Sidebar.Enabled;
-            _sidebarPinOnOpen = current.Sidebar.PinOnOpen;
 
             InitMediaSources(current.Lyrics.SourceAppId, lyrics);
 
@@ -326,32 +328,6 @@ namespace MyTopBar.ViewModels
         }
 
         /// <summary>
-        /// 侧边栏开关：写回配置并让顶栏立即重启边缘检测，无需重启应用。
-        /// </summary>
-        partial void OnSidebarEnabledChanged(bool value)
-        {
-            if (_loading)
-            {
-                return;
-            }
-
-            _settings.Current.Sidebar.Enabled = value;
-            _settings.Save();
-            SettingsApplied?.Invoke(this, EventArgs.Empty);
-        }
-
-        partial void OnSidebarPinOnOpenChanged(bool value)
-        {
-            if (_loading)
-            {
-                return;
-            }
-
-            _settings.Current.Sidebar.PinOnOpen = value;
-            _settings.Save();
-        }
-
-        /// <summary>
         /// 按关键字搜索城市。用 GeoAPI 把城市名换成经纬度，
         /// 免去手填坐标。
         /// </summary>
@@ -429,7 +405,10 @@ namespace MyTopBar.ViewModels
             RebuildMediaSources(lyrics.AvailableMediaSources, savedSourceId);
 
             // 播放器打开/关闭时刷新列表，让用户不必重启应用就能选到新来源。
+            // 注意：lyrics 是 DI 单例，本 VM 是 transient，订阅必须在 Dispose 里退订，
+            // 否则每打开一次设置窗口就会有一个 VM 被单例永久持有（内存泄漏）。
             lyrics.AvailableMediaSourcesChanged += OnAvailableMediaSourcesChanged;
+            _subscriptions.Add(() => lyrics.AvailableMediaSourcesChanged -= OnAvailableMediaSourcesChanged);
         }
 
         private void OnAvailableMediaSourcesChanged(IReadOnlyList<string> sources)
@@ -572,8 +551,32 @@ namespace MyTopBar.ViewModels
             catch (Exception ex)
             {
                 Infrastructure.Common.AppLog.Error("打开日志目录失败", ex);
-                MessageBox.Show($"无法打开日志目录：{logDir}", "MyTopBar", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogs.ShowWarning($"无法打开日志目录：{logDir}", "MyTopBar");
             }
+        }
+
+        /// <summary>
+        /// 释放对外订阅。
+        ///
+        /// 本 VM 由 DI 以 transient 注册（每开一次设置窗口一个），
+        /// 却订阅了单例服务的事件；不退订就等于把整个 VM（及其 ObservableCollection）
+        /// 挂在单例上永不回收。由 SettingsWindow.OnClosed 调用。
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            foreach (Action unsubscribe in _subscriptions)
+            {
+                unsubscribe();
+            }
+
+            _subscriptions.Clear();
         }
     }
 

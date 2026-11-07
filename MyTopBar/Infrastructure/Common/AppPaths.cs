@@ -5,7 +5,7 @@ namespace MyTopBar.Infrastructure.Common
     /// <summary>
     /// 程序数据的根目录：exe 所在目录（便携式布局）。
     ///
-    /// 为什么集中在这里定义：settings.json、logs\、clips\、lyrics\ 原先各自
+    /// 为什么集中在这里定义：settings.json、logs\、lyrics\ 原先各自
     /// 拼一遍 %AppData%\MyTopBar\，路径一旦要搬家就得改好几处，很容易漏掉
     /// 其中一个（例如日志还写在旧位置，排查时翻错目录）。
     /// 现在只有一个来源，改动点唯一。
@@ -28,9 +28,6 @@ namespace MyTopBar.Infrastructure.Common
 
         /// <summary>日志目录。</summary>
         public static string LogDirectory => Path.Combine(BaseDirectory, "logs");
-
-        /// <summary>剪贴板图片目录。</summary>
-        public static string ClipDirectory => Path.Combine(BaseDirectory, "clips");
 
         /// <summary>歌词缓存目录。</summary>
         public static string LyricsDirectory => Path.Combine(BaseDirectory, "lyrics");

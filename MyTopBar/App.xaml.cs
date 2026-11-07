@@ -129,13 +129,12 @@ namespace MyTopBar
             services.AddSingleton<SettingsService>();
             services.AddSingleton<ThemeService>();
             services.AddSingleton<IForegroundWindowService, ForegroundWindowService>();
+            services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<PowerService>();
             services.AddSingleton<AudioService>();
             services.AddSingleton<GlobalTickService>();
             services.AddSingleton<SystemMetricsService>();
             services.AddSingleton<MediaSessionService>();
-            services.AddSingleton<ClipboardHistoryService>();
-            services.AddSingleton<EdgeTriggerService>();
             services.AddSingleton<WidgetRegistry>();
 
             // 组件数据源（Step A：渲染与数据解耦）

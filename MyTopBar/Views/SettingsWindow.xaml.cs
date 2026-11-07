@@ -34,7 +34,12 @@ namespace MyTopBar.Views
 
             _viewModel = App.Current.Services.GetRequiredService<ViewModels.SettingsViewModel>();
             DataContext = _viewModel;
-            _viewModel.SettingsApplied += (_, _) => SettingsApplied?.Invoke(this, EventArgs.Empty);
+            /*
+             * 用命名方法而不是 lambda：OnClosed 里要退订，lambda 无法 -=。
+             * VM 是 transient，窗口关闭时必须 Dispose，否则它订阅的单例
+             * LyricsWidgetViewModel 会一直持有它（每开一次窗口泄漏一个 VM）。
+             */
+            _viewModel.SettingsApplied += OnViewModelSettingsApplied;
 
             // 一键注册毛玻璃：挂 SourceInitialized / Loaded / ThemeChanged，
             // 主题明暗切换时 DWM 边框/阴影颜色会自动跟随（此前这里缺失该订阅）。
@@ -102,10 +107,17 @@ namespace MyTopBar.Views
             Focus();
         }
 
+        private void OnViewModelSettingsApplied(object? sender, EventArgs e)
+            => SettingsApplied?.Invoke(this, EventArgs.Empty);
+
         private void OnClosed(object? sender, EventArgs e)
         {
             Loaded -= OnLoaded;
             Closed -= OnClosed;
+
+            _viewModel.SettingsApplied -= OnViewModelSettingsApplied;
+            _viewModel.Dispose();
+
             _glass.Dispose();
         }
 

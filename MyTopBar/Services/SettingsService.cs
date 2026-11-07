@@ -44,7 +44,7 @@ namespace MyTopBar.Services
         {
             /*
              * 配置跟着程序走：放在 exe 所在目录，而不是 %AppData%。
-             * 目录来源统一在 AppPaths 里定义，和 logs\clips\lyrics\ 共用同一套规则。
+             * 目录来源统一在 AppPaths 里定义，和 logs\、lyrics\ 共用同一套规则。
              */
             _filePath = AppPaths.SettingsFile;
 

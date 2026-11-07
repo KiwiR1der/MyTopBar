@@ -50,8 +50,18 @@ namespace MyTopBar.Widgets
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             foreach (IWidgetPlugin plugin in PluginLoader.LoadPlugins(baseDir))
             {
-                // 插件 ID 与内置冲突时，插件优先（允许覆盖内置行为）
-                _plugins.RemoveAll(p => string.Equals(p.Id, plugin.Id, StringComparison.OrdinalIgnoreCase));
+                /*
+                 * 插件 ID 与内置冲突时插件优先（允许覆盖内置行为）。
+                 *
+                 * 但这是有实际后果的：往 plugins/ 丢一个 id="clock" 的 DLL
+                 * 就能替换掉顶栏时钟。因此冲突必须留痕，
+                 * 用户反馈「组件行为变了」时才查得到原因。
+                 */
+                if (_plugins.RemoveAll(p => string.Equals(p.Id, plugin.Id, StringComparison.OrdinalIgnoreCase)) > 0)
+                {
+                    AppLog.Warn($"插件 {plugin.Id} 覆盖了内置组件（来自 plugins/ 目录）");
+                }
+
                 _plugins.Add(plugin);
             }
         }

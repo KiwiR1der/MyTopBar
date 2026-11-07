@@ -21,6 +21,7 @@ namespace MyTopBar.ViewModels
         private readonly SettingsService _settings;
         private readonly SystemMetricsService _metrics;
         private readonly WidgetRegistry _registry;
+        private readonly IDialogService _dialogs;
 
         private readonly LyricsWidgetViewModel _lyrics;
         private readonly TextWidgetViewModel _text;
@@ -53,6 +54,7 @@ namespace MyTopBar.ViewModels
             SettingsService settings,
             SystemMetricsService metrics,
             WidgetRegistry registry,
+            IDialogService dialogs,
             LyricsWidgetViewModel lyrics,
             TextWidgetViewModel text)
         {
@@ -62,6 +64,7 @@ namespace MyTopBar.ViewModels
             _settings = settings;
             _metrics = metrics;
             _registry = registry;
+            _dialogs = dialogs;
             Settings = settings.Current;
 
             /*
@@ -118,37 +121,24 @@ namespace MyTopBar.ViewModels
 
         [RelayCommand]
         private void OpenSettings() => _powerService.OpenSettings("ms-settings:");
-        /// <summary>已打开的自用设置窗口，避免重复打开。</summary>
-        private Views.SettingsWindow? _settingsWindow;
 
+        /// <summary>
+        /// 请求打开 MyTopBar 设置窗口。
+        ///
+        /// VM 不再自己 new / Show 窗口：那会让 VM 依赖 WPF 窗口类型、无法测试。
+        /// 这里只发事件，由 View 层（MainWindow）负责实际的窗口生命周期。
+        /// </summary>
         [RelayCommand]
-        private void OpenBarSettings()
-        {
-            if (_settingsWindow is { IsLoaded: true })
-            {
-                // 同样受前台锁限制：普通 Activate() 会被系统静默拒绝，
-                // 需要走 ForceForeground 才能真正把已有窗口提到最前。
-                _settingsWindow.BringToFront();
-                return;
-            }
+        private void OpenBarSettings() => SettingsRequested?.Invoke(this, EventArgs.Empty);
 
-            _settingsWindow = new Views.SettingsWindow();
-            _settingsWindow.SettingsApplied += OnBarSettingsApplied;
-            _settingsWindow.Closed += (_, _) =>
-            {
-                if (_settingsWindow is not null)
-                {
-                    _settingsWindow.SettingsApplied -= OnBarSettingsApplied;
-                    _settingsWindow = null;
-                }
-            };
-            _settingsWindow.Show();
-        }
+        /// <summary>View 层据此打开设置窗口。</summary>
+        public event EventHandler? SettingsRequested;
 
-        /// <summary>设置窗口改动后立即作用到顶栏；具体应用由 View 层订阅。</summary>
-        public event EventHandler? AppearanceChanged;
-
-        private void OnBarSettingsApplied(object? sender, EventArgs e)
+        /// <summary>
+        /// 设置窗口改动后立即作用到顶栏；具体应用由 View 层订阅。
+        /// 由 View 层在设置窗口关闭前调用。
+        /// </summary>
+        public void ApplySettingsChange()
         {
             _metrics.IntervalMs = Settings.Metrics.IntervalMs;
 
@@ -156,6 +146,9 @@ namespace MyTopBar.ViewModels
             ReloadWidgets();
             AppearanceChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        /// <summary>外观/组件布局变化，View 层据此重设高度、重启边缘检测。</summary>
+        public event EventHandler? AppearanceChanged;
 
         [RelayCommand]
         private void Shutdown()
@@ -193,9 +186,8 @@ namespace MyTopBar.ViewModels
             }
         }
 
-        private static bool Confirm(string message, string title)
-            => MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question)
-               == MessageBoxResult.Yes;
+        /// <summary>交给对话框服务，VM 不直接依赖 MessageBox。</summary>
+        private bool Confirm(string message, string title) => _dialogs.Confirm(message, title);
 
         /// <summary>窗口加载后启动各数据源。</summary>
         public void Start()

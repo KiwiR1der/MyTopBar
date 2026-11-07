@@ -20,6 +20,8 @@ namespace MyTopBar.Infrastructure.Common
 
         public static void Info(string message) => Write("INFO", message, null);
 
+        public static void Warn(string message) => Write("WARN", message, null);
+
         public static void Error(string message, Exception? exception = null) => Write("ERROR", message, exception);
 
         private static void Write(string level, string message, Exception? exception)
