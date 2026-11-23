@@ -9,7 +9,10 @@ namespace MyTopBar.Widgets
         private readonly SystemMetricsService _metrics;
 
         [ObservableProperty]
-        private string _text = "↓ -- ↑ --";
+        private string _text = "-- / --";
+
+        /// <summary>矢量图标 key（见 GaugeIcons.xaml），与天气组件同一套机制。</summary>
+        public string Icon => "network";
 
         public NetworkWidgetViewModel(SystemMetricsService metrics)
         {
@@ -25,7 +28,7 @@ namespace MyTopBar.Widgets
 
         private void OnMetricsUpdated(SystemMetricsSnapshot snapshot)
         {
-            Text = $"↓{Format(snapshot.DownloadBytesPerSecond)} ↑{Format(snapshot.UploadBytesPerSecond)}";
+            Text = $"{Format(snapshot.DownloadBytesPerSecond)} / {Format(snapshot.UploadBytesPerSecond)}";
         }
 
         internal static string Format(double bytesPerSecond)

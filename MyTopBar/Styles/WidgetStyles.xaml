@@ -5,7 +5,7 @@
                     xmlns:widgets="clr-namespace:MyTopBar.Widgets">
 
     <common:WeatherIconConverter x:Key="WeatherIconConverter" />
-
+    <common:IconKeyToImageConverter x:Key="GaugeIconConverter" />
     <!--  顶栏内所有组件共用的文字样式  -->
     <Style x:Key="BarText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -23,6 +23,23 @@
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
+    </Style>
+
+    <!--
+        右区指标组件（CPU / 内存 / 网络）共用的图标与文字样式。
+        与天气组件保持一致：图标 16x16，与文字间距 4。
+        图标本体在 GaugeIcons.xaml，颜色写死，深浅主题下都清晰。
+    -->
+    <Style x:Key="WidgetIcon" TargetType="Image">
+        <Setter Property="Width" Value="16" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+    </Style>
+
+    <Style x:Key="WidgetIconText" BasedOn="{StaticResource BarSecondaryText}" TargetType="TextBlock">
+        <Setter Property="Margin" Value="4,0,0,0" />
     </Style>
 
     <!--  中区：时钟  -->
@@ -75,22 +92,37 @@
         </StackPanel>
     </DataTemplate>
 
-    <!--  右区：CPU / 内存（可点击看详情） / 网络  -->
+    <!--
+        右区：CPU / 内存（可点击看详情） / 网络。
+        三者结构一致（图标 + 数值），差异只有 ToolTip 与是否可点，
+        故共用上面的 WidgetIcon / WidgetIconText 样式。
+    -->
     <DataTemplate DataType="{x:Type widgets:CpuWidgetViewModel}">
-        <TextBlock Cursor="Hand"
-                   Style="{StaticResource BarSecondaryText}"
-                   Text="{Binding Text}"
-                   ToolTip="点击查看 CPU 详情" />
+        <StackPanel Cursor="Hand"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    ToolTip="点击查看 CPU 详情">
+            <Image Source="{Binding Icon, Converter={StaticResource GaugeIconConverter}}" Style="{StaticResource WidgetIcon}" />
+            <TextBlock Style="{StaticResource WidgetIconText}" Text="{Binding Text}" />
+        </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type widgets:MemoryWidgetViewModel}">
-        <TextBlock Cursor="Hand"
-                   Style="{StaticResource BarSecondaryText}"
-                   Text="{Binding Text}"
-                   ToolTip="点击查看内存详情" />
+        <StackPanel Cursor="Hand"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    ToolTip="点击查看内存详情">
+            <Image Source="{Binding Icon, Converter={StaticResource GaugeIconConverter}}" Style="{StaticResource WidgetIcon}" />
+            <TextBlock Style="{StaticResource WidgetIconText}" Text="{Binding Text}" />
+        </StackPanel>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type widgets:NetworkWidgetViewModel}">
-        <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
+        <StackPanel Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    ToolTip="下行 / 上行">
+            <Image Source="{Binding Icon, Converter={StaticResource GaugeIconConverter}}" Style="{StaticResource WidgetIcon}" />
+            <TextBlock Style="{StaticResource WidgetIconText}" Text="{Binding Text}" />
+        </StackPanel>
     </DataTemplate>
 </ResourceDictionary>

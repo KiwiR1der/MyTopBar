@@ -30,6 +30,9 @@ namespace MyTopBar.Infrastructure.Interop
             public IntPtr dwExtraInfo;
         }
 
+        /// <summary>WH_MOUSE_LL 钩子回调。</summary>
+        public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
@@ -51,6 +54,15 @@ namespace MyTopBar.Infrastructure.Interop
 
         [DllImport("user32.dll")]
         public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SetWindowsHookEx(
+            int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        /// <summary>取窗口矩形（屏幕坐标，物理像素）。</summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         /// <summary>取指定屏幕坐标处顶层窗口的句柄。</summary>
         [DllImport("user32.dll")]
@@ -119,6 +131,12 @@ namespace MyTopBar.Infrastructure.Interop
         public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         public const int SW_RESTORE = 9;
+
+        /// <summary>
+        /// 显示窗口但不激活它。用于「必须在前台可见、但不能抢焦点」的窗口。
+        /// SW_RESTORE(9) 在最小化时会激活窗口，不能用于这种场景。
+        /// </summary>
+        public const int SW_SHOWNOACTIVATE = 4;
 
         /// <summary>
         /// 强制把窗口带到前台。

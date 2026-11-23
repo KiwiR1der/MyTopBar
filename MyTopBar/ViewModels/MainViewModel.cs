@@ -37,6 +37,13 @@ namespace MyTopBar.ViewModels
         private float _volume;
 
         /// <summary>
+        /// 音量按钮的矢量图标 key。
+        /// 与右区 CPU / 内存 / 网络组件同一套图标体系（见 GaugeIcons.xaml），
+        /// 由 GaugeIconConverter 转成 ImageSource。
+        /// </summary>
+        public string VolumeIcon => "volume";
+
+        /// <summary>
         /// 中区实际渲染的组件集合。中区同一时刻最多一个组件：
         /// 有媒体播放时显示歌词，否则显示文本/一言，二者互斥。
         /// </summary>

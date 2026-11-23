@@ -56,18 +56,30 @@
                 <Button
                     Click="AppleButton_Click"
                     Style="{StaticResource AppleMenuButton}"
+                    ToolTip="MyTopBar 菜单"
                     x:Name="AppleButton">
+                    <!--
+                        Apple 徽标：与其他图标同样 14x14、垂直居中。
+
+                        用 Path 而不是 Image，理由有两条：
+                        1. 颜色要跟随主题。Fill 绑定按钮自身的 Foreground，
+                           主题切换时 DynamicResource 重新解析，颜色自动更新；
+                           若用 DrawingImage + Image，图片会被 Freeze，
+                           主题切换后颜色不再跟随（之前黑色不随主题变就是这个原因）。
+                        2. 尺寸要用 LayoutTransform 控制。原始路径的坐标系是上下
+                           颠倒的（叶子在 Y 689..938，位于主体的下方），必须
+                           ScaleY=-1 翻正。LayoutTransform 参与布局测量，
+                           Stretch=Uniform 才能正确算出 14x14 的包围盒。
+                    -->
                     <Path
                         Data="{StaticResource Apple}"
                         Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                         Height="14"
-                        RenderTransformOrigin="0.5,0.5"
-                        SnapsToDevicePixels="True"
                         Stretch="Uniform"
                         Width="14">
-                        <Path.RenderTransform>
+                        <Path.LayoutTransform>
                             <ScaleTransform ScaleX="1" ScaleY="-1" />
-                        </Path.RenderTransform>
+                        </Path.LayoutTransform>
                     </Path>
                 </Button>
 
@@ -147,19 +159,21 @@
                     </ItemsControl>
                 </Grid>
 
+                <!--
+                    音量：与右区其他指标同一套「图标 + 数值」结构。
+                    图标走 GaugeIcons.xaml 的彩色矢量（喇叭 + 声波），
+                    不再用 IconsRC.xaml 里的单色 PathGeometry —— 单色剪影
+                    在毛玻璃上辨识度低，也和旁边几个彩色图标不搭。
+                -->
                 <Button
                     Click="AudioButton_Click"
                     Style="{StaticResource AppleMenuButton}"
+                    ToolTip="点击打开音量控制"
                     x:Name="AudioButton">
-                    <StackPanel Orientation="Horizontal">
-                        <Path
-                            Data="{StaticResource Volume}"
-                            Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                            Height="14"
-                            RenderTransformOrigin="0.5,0.5"
-                            SnapsToDevicePixels="True"
-                            Stretch="Uniform"
-                            Width="14" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Image
+                            Source="{Binding VolumeIcon, Converter={StaticResource GaugeIconConverter}}"
+                            Style="{StaticResource WidgetIcon}" />
                         <TextBlock
                             Margin="4,0,0,0"
                             Style="{StaticResource BarSecondaryText}"

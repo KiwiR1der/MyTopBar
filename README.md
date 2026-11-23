@@ -1,6 +1,6 @@
 # MyTopBar
 
-一个 Windows 上的 macOS 风格顶栏。通过 Shell 的 AppBar 协议真正占用桌面工作区，所有最大化窗口都会从顶栏下边缘开始。
+Windows 上的 macOS 风格顶栏。通过 Shell 的 AppBar 协议真正占用桌面工作区，最大化窗口从顶栏下边缘开始。
 
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
@@ -8,75 +8,56 @@
 
 ## 特性
 
-- **工作区占位**：注册为 AppBar，不是普通悬浮窗，最大化窗口不会盖住顶栏
-- **毛玻璃背景**：只做高斯模糊（`ACCENT_ENABLE_BLURBEHIND`），不加噪点、不叠色调，背景纹理可见
-- **可插拔组件**：中区与右区各自独立装配，可启停、可拖动排序
-- **不抢焦点**：点击顶栏不会让当前窗口失焦，`WS_EX_NOACTIVATE` 实现
-- **配置持久化**：自动保存到程序目录下的 `settings.json`（便携式，不写 `%AppData%`）
-- **设置窗口**：外观与组件改动即时生效，无需重启；天气参数点「应用并测试」后生效
-- **弹窗详情**：点击时钟看日历、点击天气看详情卡片，毛玻璃背景与顶栏一致
-- **播放控制**：点击歌词弹出浮窗，显示专辑封面、上一首/播放暂停/下一首与进度条
-- **全屏自动收起**：有全屏应用时顶栏自动隐藏，退出后恢复，与 macOS 菜单栏一致
-- **歌词缓存**：查到的歌词按曲目落盘（程序目录 `lyrics\`），重启后不再重复请求
-- **开机自启**：设置里一键开关，写当前用户启动项，不需要管理员权限
+- **工作区占位**：注册为 AppBar，最大化窗口不会盖住顶栏
+- **毛玻璃背景**：只做高斯模糊，不加噪点或色调
+- **可插拔组件**：中区与右区独立装配，可启停、可拖动排序
+- **不抢焦点**：点击顶栏不会让当前窗口失焦
+- **便携**：配置存在程序目录 `settings.json`，不写 `%AppData%`
+- **全屏自动收起**：有全屏应用时隐藏，退出后恢复
 
 ## 预览
 
 ![顶栏](docs/bar.png)
 
-深色主题下的顶栏：左区 Apple 菜单 + 前台应用名，中区歌词/文本，右区系统指标、天气、时钟与音量。
+<details>
+<summary>更多截图</summary>
 
 <img src="docs/fullscreen-lyrics.jpg" alt="歌词组件" />
 
-歌词组件跟随系统媒体会话（SMTC），播放时自动替换文本组件,点击歌词还能弹出播放控制浮窗：专辑封面、曲目信息、进度条与上一首 / 播放暂停 / 下一首。
+歌词跟随系统媒体会话（SMTC），播放时替换文本组件；点击可弹出播放控制浮窗。
 
-<img width="32%" src="docs/weather-popup.png" alt="天气详情弹窗" />
+<img width="32%" src="docs/weather-popup.png" alt="天气详情" />
 
-点击天气组件弹出详情卡片：实时温度、体感/湿度/风速、日出日落与未来 3 天预报
+点击天气弹出详情卡片：实时温度、体感/湿度/风速、日出日落与未来 3 天预报。
 
-## 布局
-
-左右两列使用 `Auto` + `SharedSizeGroup` 自适应内容宽度（按配置最多约 490px），
-中区始终在屏幕正中。若两列宽度不等，中区会偏到一侧，所以两列被强制成同宽。
+</details>
 
 ## 组件
 
 | 组件 | 区域 | 数据来源 | 说明 |
 |---|---|---|---|
-| 歌词 | 中 | SMTC + 网易云 / [LRCLIB](https://lrclib.net) | 有播放时显示，与文本组件互斥；点击弹出播放控制浮窗，歌词按曲目落盘缓存 |
-| 文本 | 中 | 静态文本 / [一言](https://hitokoto.cn) | 无播放时显示，失败保留上次内容 |
+| 歌词 | 中 | SMTC + 网易云 / [LRCLIB](https://lrclib.net) | 有播放时显示，与文本互斥；点击弹播放控制 |
+| 文本 | 中 | 静态文本 / [一言](https://hitokoto.cn) | 无播放时显示 |
 | 网络 | 右 | `NetworkInterface` | 上下行实时速率 |
 | CPU | 右 | `GetSystemTimes` | 采样差值计算使用率 |
-| 内存 | 右 | `GlobalMemoryStatusEx` | 显示已用/总量 |
-| 天气 | 右 | 和风天气 GeoAPI + 实时天气 + 每日预报 | 彩色矢量图标；点击弹出详情卡片，见下方配置 |
-| 时钟 | 右 | 本地时间 | 对齐到整分刷新；点击弹出日历 |
+| 内存 | 右 | `GlobalMemoryStatusEx` | 已用 / 总量 |
+| 天气 | 右 | 和风天气 | 彩色矢量图标；点击弹详情卡片 |
+| 时钟 | 右 | 本地时间 | 整分刷新；点击弹日历 |
 
-系统指标由单一定时器统一采样，供右区组件共享，不会为每个组件单独开计时器。
-
-天气图标不使用 emoji，而是把彩色 SVG 转成 WPF `DrawingImage`（见 `Assets/Icons/iconfont/WeatherIcons.xaml`）。
-Windows 的 emoji 字体在深色背景下会被字体回退渲染成单色轮廓，彩色渲染又依赖 DirectWrite 行为；
-矢量图标颜色固定、任意缩放不糊、深色背景下同样清晰。
+系统指标由单一定时器统一采样供各组件共享。图标全部使用矢量图形（`DrawingImage` / `Path`），不用 emoji——Windows 的 emoji 字体在深色背景下会被渲染成单色轮廓。
 
 ## 交互
 
-- **点击 Apple 图标** → 系统菜单（关于本机 / 系统设置 / 睡眠 / 重启 / 关机 / 退出）
-- **点击时钟** → 日历弹窗
-- **点击天气** → 天气详情卡片（实时 + 未来 3 天预报）
-- **点击歌词** → 播放控制浮窗（封面 / 上一首 / 播放暂停 / 下一首 / 进度条）
-- **点击音量** → 音量滑块
-- **点击弹窗外部** → 自动收起（弹窗是独立 Window，靠 `Deactivated` 收起，关闭时归还原窗口焦点）
-- **长按任意组件 3 秒** → 进入排序模式，左右拖动即可换位，松手自动保存
-  （此时临时挂低级键盘钩子监听 Esc；常态下窗口不抢焦点，拿不到键盘）
+- **Apple 图标** → 系统菜单（关于本机 / 系统设置 / 睡眠 / 重启 / 关机 / 退出）
+- **时钟** → 日历 · **天气** → 详情卡片 · **歌词** → 播放控制 · **音量** → 音量滑块
+- **点击弹窗外部** → 自动收起
+- **长按组件 3 秒** → 进入排序模式，拖动换位，松手保存
 
 ## 系统要求
 
-- Windows 10 1809 (build 17763) 或更高
-- .NET 8 SDK（仅编译需要）
+Windows 10 1809 (build 17763) 或更高；.NET 8 SDK（仅编译需要）。
 
-> 毛玻璃走 `SetWindowCompositionAttribute`，Win10 1809 起可用，
-> 不依赖 Win11 的 SystemBackdrop API。
-
-## 构建与运行
+## 构建
 
 ```bash
 git clone https://github.com/KiwiR1der/MyTopBar.git
@@ -85,11 +66,11 @@ dotnet build
 dotnet run --project MyTopBar
 ```
 
-构建产物位于 `MyTopBar/bin/Debug/net8.0-windows10.0.19041.0/MyTopBar.exe`。
+产物位于 `MyTopBar/bin/Debug/net8.0-windows10.0.19041.0/MyTopBar.exe`。
 
 ## 配置
 
-首次启动会在程序所在目录（exe 同级的 `settings.json`）生成默认配置；若该位置没有配置文件而 `%AppData%\MyTopBar\settings.json` 存在，会把旧配置复制过来一次（旧文件保留，不会删除）：
+首次启动在 exe 同级生成 `settings.json`；若该位置无配置而 `%AppData%\MyTopBar\settings.json` 存在，会复制一次过来（旧文件保留）。
 
 ```jsonc
 {
@@ -102,12 +83,11 @@ dotnet run --project MyTopBar
   ],
   "api": {
     "qWeather": {
-      "apiHost": "",             // 控制台-设置，形如 xxx.qweatherapi.com
-      "authMode": 0,             // 0=API KEY
-      "apiKey": "",              // 控制台-项目管理的凭据
+      "apiHost": "",            // 控制台-设置，形如 xxx.qweatherapi.com
+      "apiKey": "",             // 控制台-项目管理的凭据
       "latitude": "39.92",
       "longitude": "116.41",
-      "placeName": "",           // 由城市搜索填入，仅用于界面显示
+      "placeName": "",          // 城市搜索填入，仅用于显示
       "intervalMinutes": 30,
       "language": "zh"
     },
@@ -119,120 +99,60 @@ dotnet run --project MyTopBar
 
 也可以点 Apple 菜单里的「MyTopBar 设置…」用图形界面调整。
 
-### 和风天气配置
+### 和风天气
 
-使用和风天气**新版** API，两个接口：
+使用新版 API（`X-QW-Api-Key` 请求头认证）：
 
 ```
 GET https://{ApiHost}/geo/v2/city/lookup?location={城市名}&number=10
 GET https://{ApiHost}/weather/v1/current/{lat}/{lon}?lang=zh
 GET https://{ApiHost}/weather/v1/daily/{lat}/{lon}?localTime=true&lang=zh&days=3
-X-QW-Api-Key: {ApiKey}
 ```
 
-顶栏只显示实时天气，详情卡片额外请求每日预报（`days=3`）。
-两个接口的数值字段都是 `{ "value": ..., "unit": ... }` 结构，
-`humidity` 是比例值（`0.69` 表示 69%），风速单位 `m/s`，日出的 `astro.sunrise` 是 ISO 时间——
-解析时需按实际结构处理，预报根字段是 `days[]` 而不是 `daily[]`。
+设置窗口里按顺序填：
 
-在设置窗口的「和风天气」区块里：
+1. **API Host** —— 控制台 → 设置 → API Host
+2. **API Key** —— 控制台 → 项目管理 → 凭据（认证方式选 API KEY）
+3. **地点** —— 搜城市名，点结果自动填经纬度
+4. 点 **应用并测试** 立即请求一次校验
 
-1. 填 **API Host** —— 控制台 → **设置** → API Host，形如 `h2a9cf3mhs.xy.qweatherapi.com`
-2. 填 **API Key** —— 控制台 → **项目管理** → 凭据 → 创建凭据，认证方式选 **API KEY**
-3. 在「地点」里搜城市名（中文或英文都行），点搜索结果即自动填入经纬度
-4. 点 **应用并测试** —— 会立刻请求一次，结果显示在按钮下方
+> 常见错误：把「凭据 ID」（形如 `ABCDE12345`）当成 API Host 填入。两者不同，凭据 ID 只在 JWT 认证时作为 `kid` 使用。
 
-> **常见错误**：把「凭据 ID」（形如 `ABCDE12345`）当成 API Host 填进来。
-> 两者完全不同的东西：凭据 ID 只在 JWT 认证时作为 `kid` 使用。
-> 程序会做格式校验，填错时直接提示「API Host 格式不对」。
+参数改完必须点「应用并测试」才生效，输入过程中不会反复请求接口——天气接口按次计费。
 
-| 配置 | 获取位置 | 说明 |
-|---|---|---|
-| API Host | 控制台 → 设置 | 每账号随机分配，也是认证的一部分 |
-| API Key | 控制台 → 项目管理 → 凭据 | 认证方式选 API KEY |
-| 地点 | 设置窗口内搜索 | 经 GeoAPI 转换为经纬度，最多两位小数 |
+用 API KEY 而非官方推荐的 JWT，原因：.NET 8 无内置 Ed25519，需引入第三方库；且桌面应用把私钥存进配置文件，反而比一个可随时吊销的 Key 更危险。
 
-参数改完必须点 **应用并测试** 才生效——输入过程中不会反复请求接口。
+## 实现要点
 
-> 旧版的 `devapi.qweather.com/v7/weather/now?key=` 已被官方列入停用计划
-> （公共域名 2026 年起逐步停止服务，API KEY 每日请求量 2027 年起受限），
-> 程序已迁移到新版接口，不再保留旧路径。
-
-#### 关于认证方式
-
-官方推荐 JWT（Ed25519 签名）。本程序使用 **API KEY 请求头**（`X-QW-Api-Key`），理由：
-
-- .NET 8 没有内置 Ed25519，需额外引入第三方库
-- 桌面应用把 Ed25519 私钥存进 `settings.json`，反而比一个可随时吊销的 Key 更危险
-- 官方目前只是"限制"API KEY 的每日请求量，并未禁用
-
-## 技术要点
+<details>
+<summary>展开查看</summary>
 
 ### 工作区占位
 
-`AppBarController` 通过 `SHAppBarMessage`（`ABM_NEW` / `ABM_QUERYPOS` / `ABM_SETPOS`）向 Shell 注册应用栏。同时处理了：
+`AppBarController` 通过 `SHAppBarMessage`（`ABM_NEW` / `ABM_QUERYPOS` / `ABM_SETPOS`）注册应用栏，并处理 `ABN_POSCHANGED` 重定位、`TaskbarCreated` 广播（Explorer 重启后重新注册）、`WM_DPICHANGED` / `WM_DISPLAYCHANGE` 按新 DPI 重算厚度。
 
-- `ABN_POSCHANGED` 通知后重新定位
-- `TaskbarCreated` 广播（Explorer 重启后重新注册）
-- `WM_DPICHANGED` / `WM_DISPLAYCHANGE` 时按新 DPI 重算厚度
+### 不抢焦点
 
-### 全屏应用自动收起
+顶栏加 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`，配合 `ShowActivated="False"`，点击时前台窗口保持不变。代价是永远拿不到键盘焦点，所以排序模式的 Esc 退出改用临时的 `WH_KEYBOARD_LL` 钩子（平时不挂任何全局钩子）。
 
-`ABN_FULLSCREENAPP` 的 `lParam` 非 0 表示有全屏应用进入，0 表示退出。
-`AppBarController` 收到后只更新状态并抛事件，显隐交给 `MainWindow`：
+### 弹窗
 
-- 用 `Visibility.Hidden` 而不是 `Window.Hide()`。`Hide()` 会卸载整个视觉树，
-  恢复时组件要重新布局、重新取数，表现为顶栏闪一下、歌词/天气短暂空白
-- 不注销 AppBar。工作区占位必须保留，否则退出全屏的瞬间系统先把工作区还给
-  最大化窗口、再收缩一次，屏幕会明显跳一下
-- 全屏期间忽略 `ABN_POSCHANGED`。那时工作区被全屏窗口占满，
-  强行 `ABM_SETPOS` 会把顶栏重新摆出来盖在画面上
-- 进入全屏前先收掉所有弹窗——Popup 是独立 HWND，顶栏隐藏后它仍浮在最上层
+7 个弹窗是独立 `Window`（`PopupWindow`）而非 WPF `Popup`——后者位置依赖 `PlacementTarget`，无法精确控制。
 
-### 拖动排序模式
+- 弹窗自身带 `WS_EX_NOACTIVATE`，从设计上不抢焦点。若做成可激活窗口，`Show()` + `Activate()` 会被前台锁规则静默拒绝，弹窗虽画出来却不是活动窗口，点击会**穿透到菜单下方的程序**
+- 收起不靠 `Deactivated`（非激活窗口收不到），而是打开期间临时挂 `WH_MOUSE_LL` 钩子：点外部收起，点自身放行
+- 用 `Hide()` 而非 `Close()`：`Close()` 销毁 HWND，之后 `Show()` 抛异常
+- 右区弹窗对齐「显示器右边缘 - 20」而非 `RightPanel`——后者在 `SharedSizeGroup` 列里宽度会变，拿它当基准会导致每次打开位置不同
 
-按住顶栏组件 3 秒进入排序模式，拖动即可调整同区域内顺序，松手落盘，Esc 或点空白处退出。
+### 全屏应用
 
-只有排序模式会挂低级键盘钩子（`WH_KEYBOARD_LL`），且**仅用于监听 Esc**，退出排序立刻摘掉。
-平时完全不挂全局钩子——顶栏带 `WS_EX_NOACTIVATE`，永远拿不到键盘焦点，
-`PreviewKeyDown` 不会触发，所以才用钩子绕开焦点限制（见 `MainWindow.OnSortModeTimerTick`）。
+`ABN_FULLSCREENAPP` 的 `lParam` 非 0 表示进入。用 `Visibility.Hidden` 而非 `Window.Hide()`（后者卸载视觉树，恢复时会闪）；不注销 AppBar（否则退出全屏瞬间工作区会跳一次）；全屏期间忽略 `ABN_POSCHANGED`。
 
-### 数据刷新调度
+### 数据刷新
 
-所有周期性刷新走同一个 `GlobalTickService`（单个 250ms `DispatcherTimer`），
-各 DataService 按自己的间隔订阅，不再各自新建定时器。没有订阅者时定时器自动停。
+所有周期性刷新走单个 `GlobalTickService`（250ms `DispatcherTimer`），各 DataService 按自己的间隔订阅，无订阅者时自动停。只有启动时和点「应用并测试」才真正发网络请求。
 
-只有两处会真的发起网络请求：
-
-- 进程启动时 `MainViewModel.Start()` 调一次 `StartWidget`（天气 / 一言各取一次）
-- 用户在设置里点「应用并测试」天气参数
-
-改设置（开关组件、拖高度滑杆）只走 `ConfigureWidget`，**不会**重新请求，
-避免拖动滑杆就把按次计费的天气额度打掉。
-
-### 弹窗改用独立窗口
-
-7 个顶栏弹窗（Apple 菜单、时钟、天气、音量、媒体控制、CPU/内存详情）从 WPF `Popup`
-改成了独立的 `Window`（[PopupWindow.cs](MyTopBar/Views/PopupWindow.cs)）。
-
-原因是 `Popup` 的位置依赖 `PlacementTarget`，无法精确控制，且弹出层归主窗口托管。
-换成 Window 后自己按锚点元素算位置，打开时一次算准、之后不移动。
-
-三个必须处理的细节：
-
-- **弹窗必须可激活**：非激活窗口收不到 `Deactivated`，无法用失活收起。
-  为了不破坏「点顶栏不抢焦点」，打开前记住原前台窗口，收起时用 `ForceForeground` 还回去
-- **用 `Hide()` 而不是 `Close()`**：`Window.Close()` 会销毁 HWND，之后 `Show()`
-  直接抛 `InvalidOperationException`。弹窗要反复开关，只能隐藏不销毁
-- **右区弹窗用固定右边距**：`RightPanel` 在 `SharedSizeGroup` 列里，宽度会随中区内容
-  变化（歌词 ↔ 一言切换），拿它当基准会导致同一个弹窗每次打开位置都不一样。
-  改为对齐「显示器右边缘 - 20」（20 = 顶栏 Margin 12 + 按钮 Padding 8）
-
-内容仍是各自的 `UserControl`，与窗体分离，便于同一视图复用（CPU / 内存共用一份视图类型）。
-
-### 毛玻璃实现
-
-背景固定为毛玻璃，直接调用 Win32 API，不再依赖第三方材质库：
+### 毛玻璃
 
 ```csharp
 SetWindowCompositionAttribute(hwnd,
@@ -240,85 +160,51 @@ SetWindowCompositionAttribute(hwnd,
     AccentState = ACCENT_ENABLE_BLURBEHIND (3))
 ```
 
-> `ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，未来系统版本可能失效。
-
 ### 前台窗口追踪
 
-`ForegroundWindowService` 用 `SetWinEventHook` 监听 `EVENT_SYSTEM_FOREGROUND`。因为原生回调不保证在 UI 线程，且不应在其中执行耗时操作，所以只做「标记待刷新」，实际读取合并后投递到 Dispatcher 执行。
-
-应用名按优先级解析：已知应用映射表 → 可执行文件的 `FileDescription` / `ProductName` → 窗口标题 → 进程名。
-
-### 不抢焦点
-
-顶栏加了 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` 扩展样式，配合 `ShowActivated="False"`，
-点击时前台窗口保持不变——和 macOS 菜单栏一致。
-
-代价是窗口永远拿不到键盘焦点，所以「长按 3 秒进入排序模式」里的 Esc 退出
-不能靠 `PreviewKeyDown`。实测 `SetForegroundWindow` 对这种窗口无效
-（系统前台锁定规则会拒绝，`hwndActive` 始终不变），改为排序期间临时挂一个
-`WH_KEYBOARD_LL` 低级键盘钩子只监听 Esc，退出时立刻摘掉。
+`SetWinEventHook` 监听 `EVENT_SYSTEM_FOREGROUND`。原生回调不保证在 UI 线程，因此只标记「待刷新」，实际读取合并后投递到 Dispatcher。应用名按 已知映射表 → `FileDescription` / `ProductName` → 窗口标题 → 进程名 解析。
 
 ### 配置编码
 
-`SettingsService` 读写配置都显式使用 `UTF8Encoding(false)`（无 BOM）。
-不指定编码时会走系统 ANSI 代码页，中文 Windows 上是 GBK 一类——
-`placeName` 这类中文字段会写成乱码，乱码字节还可能撞上引号边界破坏 JSON 结构，
-导致整个配置无法解析、所有设置丢失。
+读写显式用 `UTF8Encoding(false)`。不指定编码会走系统 ANSI 代码页，中文字段写成乱码，乱码字节还可能撞上引号边界破坏 JSON 结构，导致全部设置丢失。
+
+</details>
 
 ## 已知限制
 
-- **毛玻璃的兼容性风险**：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 上已被标记为不推荐，
-  未来系统版本可能失效。若真失效，退回 DWM SystemBackdrop 是唯一现成替代，
-  但要接受它在非活动窗口下退化
-- **歌词匹配**：优先网易云（中文曲库覆盖好，用的是非公开接口，随时可能失效），
-- **歌词匹配**：优先网易云（中文曲库覆盖好，用的是非公开接口，随时可能失效），
-  回退 LRCLIB。查到的歌词缓存到程序目录 `lyrics\`，同一首歌重启后不再请求。
-  纯音乐、小众本地曲目可能匹配不到；只有纯文本歌词时显示首行
-- **播放控制**：三颗按钮（上个/播放暂停/下个）走 SMTC，各播放器支持程度不一。
-  进度条拖动依赖 `TryChangePlaybackPositionAsync`，网易云等不支持 SMTC 跳转的播放器
-  会把滑块拉回真实位置
-- **单显示器**：顶栏跟随窗口所在屏幕，未做多屏独立配置
-- **全屏应用的识别**：靠 `ABN_FULLSCREENAPP` 通知，只对「全屏且顶在最前」的窗口生效。
-  无边框全屏的程序若没走标准全屏流程，Shell 可能不发通知，此时顶栏不会自动收起
-- **开机自启**：写的是当前用户的 `HKCU\...\Run`，只在当前账号登录时生效；
-  未做 Windows 服务或计划任务方式，因此不支持「开机即启动、无需登录」
+- **毛玻璃**：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 已标记不推荐，未来系统版本可能失效
+- **歌词匹配**：优先网易云（非公开接口，随时可能失效），回退 LRCLIB。纯音乐可能匹配不到，只有纯文本歌词时显示首行
+- **播放控制**：走 SMTC，各播放器支持程度不一。不支持跳转的播放器（如网易云）拖进度条会被拉回真实位置
+- **单显示器**：未做多屏独立配置
+- **全屏识别**：靠 `ABN_FULLSCREENAPP`，无边框全屏程序若没走标准流程可能不发通知
+- **开机自启**：写 `HKCU\...\Run`，仅在当前账号登录时生效
 
 ## 项目结构
 
 ```
 MyTopBar/
-├── Assets/
-│   ├── Fonts/       HarmonyOS Sans SC
-│   └── Icons/       顶栏图标几何（Apple / 音量）+ iconfont/ 彩色天气图标
-├── Infrastructure/
-│   ├── Common/      AppBarController（工作区占位）、AppLog、AppPaths、天气图标转换器
-│   ├── Interop/     Win32 P/Invoke 集中声明
-│   ├── Material/    GlassEffect（毛玻璃注册）
-│   └── Interfaces/  服务契约
+├── Assets/          字体与矢量图标
+├── Infrastructure/  AppBarController、日志、路径、Win32 P/Invoke、毛玻璃
 ├── Models/          数据模型与配置结构
-├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话、开机自启
-│   ├── Lyrics/      LRC 解析与歌词磁盘缓存
-│   └── Media/       SMTC 会话、曲目快照与播放控制
-├── ViewModels/      主视图模型、弹窗视图模型（含播放控制）、设置视图模型
-├── Views/           日历、天气详情、音量、播放控制、Apple 菜单、PopupWindow、设置窗口
-├── Widgets/         各组件视图模型 + 注册表 + 插件契约 + 天气/城市搜索封装
-└── Styles/          主题、组件样式、设置窗口控件样式
-docs/                README 用截图
+├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话
+│   ├── Lyrics/      LRC 解析与磁盘缓存
+│   └── Media/       SMTC 会话与播放控制
+├── ViewModels/      主视图模型与各弹窗视图模型
+├── Views/           弹窗内容、PopupWindow、设置窗口
+├── Widgets/         组件视图模型 + 注册表 + 插件契约
+└── Styles/          主题与控件样式
+docs/                README 截图
 ```
 
 ## 依赖
 
 | 包 | 用途 |
 |---|---|
-| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | `[ObservableProperty]` / `[RelayCommand]` 源生成器 |
+| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | `[ObservableProperty]` / `[RelayCommand]` |
 | [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入 |
 | [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
 
-字体使用 [HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，
-由华为发布，采用 [HarmonyOS Sans Fonts License](https://developer.harmonyos.com/cn/design/resource/fonts/)：
-可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，
-且需保留原始版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，
-包含 Light / Regular / Medium / Bold / Black 五个字重，版权归华为所有。
+字体使用 [HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，由华为发布，采用 HarmonyOS Sans Fonts License：可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，需保留版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，含五个字重，版权归华为所有。
 
 ## 许可证
 

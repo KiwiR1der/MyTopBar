@@ -8,6 +8,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Assets/Icons/IconsRC.xaml" />
                 <ResourceDictionary Source="/Assets/Icons/iconfont/WeatherIcons.xaml" />
+                <ResourceDictionary Source="/Assets/Icons/iconfont/GaugeIcons.xaml" />
                 <ResourceDictionary Source="/Styles/DefaultTheme.xaml" />
                 <ResourceDictionary Source="/Styles/WidgetStyles.xaml" />
                 <ResourceDictionary Source="/Styles/SettingsStyles.xaml" />

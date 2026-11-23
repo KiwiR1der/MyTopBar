@@ -15,19 +15,35 @@ namespace MyTopBar.Views
     /// 取代原先的 WPF <c>Popup</c>。每个弹窗是一个独立 Window，
     /// 位置在打开时一次性算准（相对顶栏的锚点元素），之后不再移动。
     ///
-    /// 为什么必须能激活：
-    ///   WPF 的 Popup 靠 <c>StaysOpen=False</c> + 外部点击钩子收起，
-    ///   改成 Window 后最自然的收起方式是 <c>Deactivated</c>。
-    ///   但非激活窗口永远收不到 Deactivated，所以弹窗必须可激活。
+    /// 【为什么激活式弹窗会导致「点击穿透」】
+    ///   早期实现让弹窗可激活，靠 Deactivated 事件收起（等价于 Popup 的
+    ///   StaysOpen=False）。这在顶栏上不可靠，原因是「前台锁」：
     ///
-    ///   为了不破坏「点顶栏不抢当前窗口焦点」的既有语义，
-    ///   打开前先记住原前台窗口，关闭时用 ForceForeground 还回去。
+    ///   顶栏自身带 WS_EX_NOACTIVATE，本进程因此从不被系统认作前台进程。
+    ///   当用户刚操作过别的程序时，本进程没有前台权限，
+    ///   Show() + Activate() 会被前台锁规则静默拒绝 —— 弹窗虽然画了出来，
+    ///   却不是活动窗口。此时鼠标点击不会投递给它：Windows 把点击送给系统
+    ///   判定的活动窗口，也就是菜单底下那个 App。
+    ///   用户看到菜单还亮着，点菜单项却操作了后面的程序，这就是「穿透」。
+    ///
+    /// 【现在的做法】
+    ///   1. 弹窗自带 WS_EX_NOACTIVATE，从设计上就不抢焦点，
+    ///      也就不存在「前台锁拒绝激活」这回事，行为变得确定。
+    ///   2. 收起不再依赖 Deactivated（非激活窗口永远收不到），
+    ///      改为打开期间临时挂低级鼠标钩子：点在弹窗外收起，点在自己身上放行。
+    ///   3. 用 SW_SHOWNOACTIVATE 显示，保证显示动作本身不激活窗口。
+    ///
+    ///   代价：弹窗内控件拿不到键盘焦点（当前弹窗全是按钮，不需要键盘输入）。
+    ///   收益与顶栏一致：点开菜单不会让用户正在编辑的窗口失焦。
     /// </summary>
     public class PopupWindow : Window
     {
         private readonly ThemeService _theme;
 
-        /// <summary>打开前的原前台窗口，关闭时归还焦点。</summary>
+        /// <summary>打开期间的外部点击监视器，收起时立刻摘掉。</summary>
+        private readonly OutsideClickMonitor _outsideClick;
+
+        /// <summary>打开前的原前台窗口。仅在没有外部点击时用于兜底归还焦点。</summary>
         private IntPtr _previousForeground = IntPtr.Zero;
 
         /// <summary>本次打开是否已经算过位置。</summary>
@@ -69,6 +85,12 @@ namespace MyTopBar.Views
             WindowStartupLocation = WindowStartupLocation.Manual;
             AllowsTransparency = false;
 
+            /*
+             * 不接管激活：本窗口永不被激活，点击也就不会被前台锁规则吞掉。
+             * 收起依靠 OutsideClickMonitor，见类注释。
+             */
+            ShowActivated = false;
+
             // 背景必须全透明：毛玻璃靠 DWM 模糊透出，WPF 自己画的底色会盖住它。
             Background = Brushes.Transparent;
 
@@ -94,9 +116,10 @@ namespace MyTopBar.Views
 
             Content = new Grid { Background = Brushes.Transparent, Children = { ContentHost } };
 
+            _outsideClick = new OutsideClickMonitor(this, Collapse);
+
             SourceInitialized += OnSourceInitialized;
             Loaded += OnLoaded;
-            Deactivated += OnDeactivated;
             Closed += OnClosed;
         }
 
@@ -109,6 +132,15 @@ namespace MyTopBar.Views
                 source.CompositionTarget.BackgroundColor = Colors.Transparent;
             }
 
+            /*
+             * 关键：给弹窗自己加 WS_EX_NOACTIVATE。
+             *
+             * 必须在这里（HWND 已创建、尚未显示）设置，Show 之前生效。
+             * 这样弹窗永远不会成为活动窗口，点击一律由它自己接收，
+             * 不会再穿透到菜单下方的程序。
+             */
+            NativeMethods.MakeNonActivating(handle);
+
             GlassEffect.Apply(handle, _theme.IsDark, roundCorners: true);
         }
 
@@ -116,14 +148,6 @@ namespace MyTopBar.Views
         {
             GlassEffect.SetTransparentClientArea(this);
             InvalidateVisual();
-        }
-
-        /// <summary>
-        /// 窗口失活即收起——这就是 Popup 的 StaysOpen=False 行为。
-        /// </summary>
-        private void OnDeactivated(object? sender, EventArgs e)
-        {
-            Collapse();
         }
 
         /// <summary>
@@ -141,10 +165,18 @@ namespace MyTopBar.Views
             }
 
             Hide();
+            _outsideClick.Stop();
             RestoreForeground();
         }
 
-        /// <summary>把焦点还给打开前的窗口。</summary>
+        /// <summary>
+        /// 把焦点还给打开前的窗口。
+        ///
+        /// 仅作为兜底：正常路径是非激活弹窗压根没抢过焦点，
+        /// 用户点外部收起时前台本就还是原来那个窗口，
+        /// ForceForeground 会把前台再抢一次，反而可能打断用户刚点的新窗口。
+        /// 因此只有在「原前台 == 当前前台」时才归还，见下方判断。
+        /// </summary>
         private void RestoreForeground()
         {
             if (_previousForeground == IntPtr.Zero)
@@ -152,29 +184,36 @@ namespace MyTopBar.Views
                 return;
             }
 
-            // 只有当原窗口仍然存在、且我们确实拿走了焦点时才归还，
-            // 避免把用户主动切换到别的窗口的前台状态抢回来。
-            if (NativeMethods.IsWindow(_previousForeground))
+            IntPtr saved = _previousForeground;
+            _previousForeground = IntPtr.Zero;
+
+            if (!NativeMethods.IsWindow(saved))
             {
-                NativeMethods.ForceForeground(_previousForeground);
+                return;
             }
 
-            _previousForeground = IntPtr.Zero;
+            IntPtr current = NativeMethods.GetForegroundWindow();
+
+            // 用户已经切到别的窗口了，不要打断他。
+            if (current != IntPtr.Zero && current != saved)
+            {
+                return;
+            }
+
+            NativeMethods.ForceForeground(saved);
         }
 
         private void OnClosed(object? sender, EventArgs e)
         {
             SourceInitialized -= OnSourceInitialized;
             Loaded -= OnLoaded;
-            Deactivated -= OnDeactivated;
             Closed -= OnClosed;
 
+            _outsideClick.Dispose();
             RestoreForeground();
         }
 
-        /// <summary>
-        /// 显示弹窗。位置在 Show 之前按锚点算好，显示后不再移动。
-        /// </summary>
+        /// <summary>显示弹窗。位置在 Show 之前按锚点算好，显示后不再移动。</summary>
         public void Open()
         {
             if (IsVisible)
@@ -185,13 +224,39 @@ namespace MyTopBar.Views
             _previousForeground = NativeMethods.GetForegroundWindow();
             _positioned = false;
 
-            Show();
+            try
+            {
+                Show();
+            }
+            catch (InvalidOperationException)
+            {
+                // 窗口已关闭无法再显示（理论上不会走到，防御性处理）。
+                return;
+            }
 
             // SizeToContent 生效后 ActualWidth/Height 才有值，此时定位才准确。
             UpdateLayout();
             PositionOnce();
 
-            Activate();
+            /*
+             * 显式用「不激活」方式显示。
+             *
+             * 窗口本身已经带 WS_EX_NOACTIVATE，正常不会激活；
+             * 但 Show() 默认走 SW_SHOW，某些情况下仍会尝试抢前台，
+             * 被前台锁拒绝后窗口处于「半前台」状态，正是穿透的来源。
+             * 这里补一次 SW_SHOWNOACTIVATE，确保语义明确。
+             */
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            NativeMethods.ShowWindow(handle, NativeMethods.SW_SHOWNOACTIVATE);
+
+            // 保持置顶组内最前，避免被其他 Topmost 窗口压住。
+            NativeMethods.SetWindowPos(
+                handle,
+                NativeMethods.HWND_TOPMOST,
+                0, 0, 0, 0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+
+            _outsideClick.Start();
         }
 
         /// <summary>
@@ -207,7 +272,6 @@ namespace MyTopBar.Views
 
         /// <summary>
         /// 切换显隐。已显示则收起，否则按锚点打开。
-        /// 对应原先 PopupHost.Toggle 的行为。
         /// </summary>
         public void ToggleAround(FrameworkElement anchor, PopupAlignment alignment)
         {
@@ -268,7 +332,6 @@ namespace MyTopBar.Views
 
             // 夹在屏幕内，避免右侧弹窗（音量）溢出到屏幕外只露一角。
             ClampToScreen(ref left, ref top, width);
-
 
             Left = left;
             Top = top;
