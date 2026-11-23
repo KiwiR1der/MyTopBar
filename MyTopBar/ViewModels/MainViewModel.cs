@@ -200,8 +200,10 @@ namespace MyTopBar.ViewModels
 
             _registry.Rebuild(Settings.Widgets);
 
+            // 启动时既配置又启动：这是唯一的「立刻取一次数」入口。
             foreach (WidgetViewModelBase widget in _registry.Center.Concat(_registry.Right))
             {
+                ConfigureWidget(widget);
                 StartWidget(widget);
             }
 
@@ -209,29 +211,48 @@ namespace MyTopBar.ViewModels
         }
 
         /// <summary>
-        /// 按配置重新装配组件。
+        /// 按配置重新装配组件（设置窗口里改了开关或拖动排序后调用）。
         ///
         /// 注意：这里**不能** Dispose 组件。这些组件是单例，数据管道（定时器、事件订阅）
         /// 在构造函数里建立，一旦 Dispose 就再也不会恢复——表现为改组件的开关后
         /// 时钟停走、CPU/内存/网络数值定格。启用状态由 <see cref="WidgetRegistry.Rebuild"/>
         /// 决定谁进入渲染集合，组件本身不需要销毁。
+        ///
+        /// 也不负责「让组件重新取数」：
+        ///   - 时钟/指标/歌词走各自已建立的 Tick 订阅，本来就在跑；
+        ///   - 天气和一言只由 <see cref="ApplyWidgetOptions"/> 在配置项真的变化时才重新请求。
+        /// 之前这里无条件调 <see cref="StartWidget"/>，导致拖动一下顶栏高度滑杆
+        /// 也会发一次按次计费的天气请求。
         /// </summary>
         public void ReloadWidgets()
         {
             _registry.Rebuild(Settings.Widgets);
-            foreach (WidgetViewModelBase widget in _registry.Center.Concat(_registry.Right))
-            {
-                StartWidget(widget);
-            }
-
+            ApplyWidgetOptions();
             RefreshCenterWidget();
         }
 
         /// <summary>
-        /// 按插件 ID 启动组件。
-        /// 组件 VM 从 DataService 取数据，启动时只需传配置。
+        /// 把配置交给各组件的数据源，并按需启动。
+        ///
+        /// 每个分支都必须幂等且**只做配置**：DataService 只有在配置真正变化时
+        /// 才需要重新请求网络，这部分判断在 DataService 内部完成。
         /// </summary>
-        private void StartWidget(WidgetViewModelBase widget)
+        private void ApplyWidgetOptions()
+        {
+            foreach (WidgetViewModelBase widget in _registry.Center.Concat(_registry.Right))
+            {
+                ConfigureWidget(widget);
+            }
+        }
+
+        /// <summary>
+        /// 按插件 ID 把配置交给组件的数据源。
+        ///
+        /// 这里**只配置、不启动**：启动只发生在 <see cref="Start"/> 里。
+        /// 「启动」在天气/一言的 DataService 里意味着立刻发一次网络请求，
+        /// 如果每次改设置都走一遍，拖一下高度滑杆也会打一次 API。
+        /// </summary>
+        private void ConfigureWidget(WidgetViewModelBase widget)
         {
             switch (widget.Id)
             {
@@ -242,25 +263,44 @@ namespace MyTopBar.ViewModels
                             Settings.Api.Hitokoto.Enabled ? TextWidgetMode.Hitokoto : TextWidgetMode.Static,
                             "MyTopBar",
                             Settings.Api.Hitokoto.IntervalMinutes);
-                        text.Start();
                     }
                     break;
                 case "weather":
                     if (widget is WeatherWidgetViewModel weather)
                     {
                         weather.Configure(Settings.Api.QWeather);
-                        weather.Start();
                     }
                     break;
                 case "lyrics":
                     if (widget is LyricsWidgetViewModel lyrics)
                     {
                         lyrics.SetSourceFilter(Settings.Lyrics.SourceAppId);
-                        lyrics.Start();
                     }
                     break;
                 case "clock":
                     // 时钟 DataService 在构造时已 Start，无需额外配置。
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 按插件 ID 启动组件，让天气/一言立刻取一次数据。
+        ///
+        /// 只应在 <see cref="Start"/>（进程启动）时调用。反复调用会让
+        /// DataService 每次都打一次网络请求，而天气是按次计费的。
+        /// </summary>
+        private void StartWidget(WidgetViewModelBase widget)
+        {
+            switch (widget.Id)
+            {
+                case "text":
+                    (widget as TextWidgetViewModel)?.Start();
+                    break;
+                case "weather":
+                    (widget as WeatherWidgetViewModel)?.Start();
+                    break;
+                case "lyrics":
+                    (widget as LyricsWidgetViewModel)?.Start();
                     break;
             }
         }

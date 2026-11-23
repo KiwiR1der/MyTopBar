@@ -12,6 +12,7 @@ using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
 using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
+using MyTopBar.Models.Settings;
 using MyTopBar.ViewModels;
 using MyTopBar.Widgets;
 
@@ -59,7 +60,7 @@ namespace MyTopBar
 
             InitializeComponent();
 
-            double height = Math.Clamp(_settings.Current.Appearance.BarHeight, 28, 40);
+            double height = BarHeightRange.Clamp(_settings.Current.Appearance.BarHeight);
             Height = height;
 
             _appBarController = new AppBarController(this, AppBarController.AppBarEdge.Top, height);
@@ -169,7 +170,7 @@ namespace MyTopBar
         /// <summary>设置窗口改动后立即应用：高度、组件启停。</summary>
         private void OnAppearanceChanged(object? sender, EventArgs e)
         {
-            double height = Math.Clamp(_settings.Current.Appearance.BarHeight, 28, 40);
+            double height = BarHeightRange.Clamp(_settings.Current.Appearance.BarHeight);
             if (Math.Abs(Height - height) > 0.5)
             {
                 Height = height;
@@ -264,7 +265,7 @@ namespace MyTopBar
 
         /// <summary>
         /// 应用毛玻璃：委托给 GlassEffect。
-        /// 材质固定为 BLURBEHIND 的理由见 GlassEffect / MaterialInfo 的注释。
+        /// 材质固定为 BLURBEHIND 的理由见 GlassEffect 的注释。
         /// </summary>
         private void ApplyBlurMaterial(bool isDark, IntPtr handle)
         {
@@ -324,8 +325,13 @@ namespace MyTopBar
             }
 
             /*
-             * 右区四个弹窗都右对齐到 RightPanel，与原 CustomPopupPlacementCallback
-             * 的效果一致（弹窗右边缘贴住右区面板右边缘）。
+             * 右区四个弹窗都用 PopupAlignment.BottomRight，但**真正的水平基准不是 RightPanel**：
+             * 这四者都设了 FixedRightMargin（见构造函数），PopupWindow 会忽略锚点宽度，
+             * 直接按「显示器右边缘 - BarSideMargin」对齐。
+             *
+             * RightPanel 只提供垂直锚点（弹窗开在顶栏下沿）。
+             * 之所以不拿 RightPanel 当水平基准：它在 SharedSizeGroup 列里，
+             * 宽度会随中区内容（歌词 / 一言切换）变化，同一个弹窗每次打开位置都会变。
              */
             switch (fe.DataContext)
             {

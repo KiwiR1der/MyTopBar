@@ -21,8 +21,6 @@ namespace MyTopBar.Widgets
         public override string DisplayName => "文本 / 一言";
         public override WidgetZone DefaultZone => WidgetZone.Center;
 
-        public override double MinWidth => 80;
-
         public TextWidgetViewModel(TextDataService data)
         {
             _data = data;

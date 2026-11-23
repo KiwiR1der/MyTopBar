@@ -37,8 +37,12 @@ namespace MyTopBar.Widgets
             }
 
             Refresh();
-            // 对齐到整分：订阅 1 分钟 Tick，但 Refresh 内部会计算下次对齐时间。
-            // 实际刷新由 GlobalTickService 的 250ms 基准驱动，Refresh 只在整分边界执行。
+            /*
+             * 订阅 1 分钟间隔。注意这是「距上次 tick 满 60s」而非「对齐整分」：
+             * GlobalTickService 按 250ms 基准派发，首次触发时刻取决于订阅时刻，
+             * 所以时钟在整分后最多偏差 1 秒左右才跳字。要精确对齐需在
+             * GlobalTickService 里加边界对齐，不符合它「通用调度」的定位。
+             */
             _subscription = _tick.Subscribe(TimeSpan.FromMinutes(1), Refresh);
         }
 

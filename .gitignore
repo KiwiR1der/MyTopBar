@@ -367,3 +367,11 @@ FodyWeavers.xsd
 
 # Task planning artifacts
 .pi/
+
+# ===== MyTopBar 运行时产物 =====
+# AppPaths 把数据放在 exe 目录（便携式布局）。settings.json 含明文 API Key，绝不能进版本库。
+settings.json
+settings.json.tmp
+logs/
+lyrics/
+plugins/

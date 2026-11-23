@@ -24,7 +24,16 @@ namespace MyTopBar.Services
         private QWeatherSettings _config = new();
 
         public string CurrentText { get; private set; } = "天气 --";
-        public string CurrentIcon { get; private set; } = "🌡️";
+
+        /*
+         * 占位/异常图标也用真实的矢量 key。
+         *
+         * 之前这里是 "🌡️" / "⚠️"，而 WeatherIconConverter 会把它拼成
+         * "WeatherIcon_🌡️" 去查资源，必然查不到 → 返回 null，
+         * 于是未配置天气时顶栏那个位置是空白的。所有 key 必须来自
+         * WeatherIcons.xaml 里实际存在的 WeatherIcon_xxx。
+         */
+        public string CurrentIcon { get; private set; } = WeatherIconKey.Placeholder;
 
         // ---- 弹窗详情数据 ----
         public string ConditionText { get; private set; } = string.Empty;
@@ -71,7 +80,7 @@ namespace MyTopBar.Services
             {
                 Stop();
                 CurrentText = reason;
-                CurrentIcon = "⚠️";
+                CurrentIcon = WeatherIconKey.Placeholder;
                 DataChanged?.Invoke(CurrentText, CurrentIcon);
                 return;
             }
@@ -589,19 +598,18 @@ namespace MyTopBar.Services
             }
 
             // 按文字描述兜底匹配
-            if (conditionText.Contains("雷")) return "fengbao";
-            if (conditionText.Contains("雪")) return "daxue";
-            if (conditionText.Contains("雨")) return "xiayu";
-            if (conditionText.Contains("雾") || conditionText.Contains("霾")) return "dawu";
-            if (conditionText.Contains("沙") || conditionText.Contains("尘")) return "shachen";
-            if (conditionText.Contains("晴")) return "qingtian";
-            if (conditionText.Contains("云") || conditionText.Contains("阴")) return "duoyun";
+            if (conditionText.Contains("雷")) return WeatherIconKey.Fengbao;
+            if (conditionText.Contains("雪")) return WeatherIconKey.Daxue;
+            if (conditionText.Contains("雨")) return WeatherIconKey.Xiayu;
+            if (conditionText.Contains("雾") || conditionText.Contains("霾")) return WeatherIconKey.Dawu;
+            if (conditionText.Contains("沙") || conditionText.Contains("尘")) return WeatherIconKey.Shachen;
+            if (conditionText.Contains("晴")) return WeatherIconKey.Qingtian;
+            if (conditionText.Contains("云") || conditionText.Contains("阴")) return WeatherIconKey.Duoyun;
 
-            return "qingtian";
+            return WeatherIconKey.Qingtian;
         }
 
         // ---- 数据模型 ----
-
         /// <summary>实时天气解析结果。</summary>
         private sealed class CurrentWeatherData
         {
@@ -637,5 +645,35 @@ namespace MyTopBar.Services
             _disposed = true;
             Stop();
         }
+    }
+
+    /// <summary>
+    /// 天气图标的资源 key。每一项都必须对应 WeatherIcons.xaml 里真实存在的
+    /// <c>WeatherIcon_{key}</c>，否则 WeatherIconConverter 会静默返回 null，
+    /// 界面上就是一块空白（而不是一个能看出来的占位图）。
+    /// </summary>
+    public static class WeatherIconKey
+    {
+        public const string Qingtian = "qingtian";
+        public const string Duoyun = "duoyun";
+        public const string Yintian = "yintian";
+        public const string Yewan = "yewan";
+        public const string Zhenyu = "zhenyu";
+        public const string Fengbao = "fengbao";
+        public const string Xiaoyu = "xiaoyu";
+        public const string Zhongyu = "zhongyu";
+        public const string Dayu = "dayu";
+        public const string Xiayu = "xiayu";
+        public const string Bingbaoyu = "bingbaoyu";
+        public const string Xiaoxue = "xiaoxue";
+        public const string Daxue = "daxue";
+        public const string Yuxue = "yuxue";
+        public const string Dawu = "dawu";
+        public const string Mai = "mai";
+        public const string Chentu = "chentu";
+        public const string Shachen = "shachen";
+
+        /// <summary>未配置 / 请求失败时的占位图标。</summary>
+        public const string Placeholder = Duoyun;
     }
 }

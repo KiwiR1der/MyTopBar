@@ -113,6 +113,7 @@ namespace MyTopBar.ViewModels
 
         [ObservableProperty]
         private bool _launchAtStartup;
+
         /// <summary>主题选项（仅浅色 / 深色）。</summary>
         public IReadOnlyList<ThemeOption> ThemeModes { get; } =
         [
@@ -227,7 +228,7 @@ namespace MyTopBar.ViewModels
                 return;
             }
 
-            _settings.Current.Appearance.BarHeight = Math.Clamp(value, 28, 40);
+            _settings.Current.Appearance.BarHeight = BarHeightRange.Clamp(value);
             _settings.Save();
             SettingsApplied?.Invoke(this, EventArgs.Empty);
         }
@@ -669,9 +670,7 @@ namespace MyTopBar.ViewModels
                 }
             }
 
-            return value.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                ? value
-                : value;
+            return value;
         }
     }
 }

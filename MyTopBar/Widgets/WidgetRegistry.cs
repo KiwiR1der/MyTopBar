@@ -127,12 +127,6 @@ namespace MyTopBar.Widgets
             }
         }
 
-        /// <summary>按 ID 查找插件（设置界面用）。</summary>
-        public IWidgetPlugin? FindPlugin(string id)
-        {
-            return _plugins.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
-        }
-
         /// <summary>所有可用插件（含未启用的），供设置界面展示。</summary>
         public IReadOnlyList<IWidgetPlugin> AllPlugins => _plugins;
 

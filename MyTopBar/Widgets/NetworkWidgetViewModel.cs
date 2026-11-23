@@ -23,8 +23,6 @@ namespace MyTopBar.Widgets
 
         public override WidgetZone DefaultZone => WidgetZone.Right;
 
-        public override double MinWidth => 104;
-
         private void OnMetricsUpdated(SystemMetricsSnapshot snapshot)
         {
             Text = $"↓{Format(snapshot.DownloadBytesPerSecond)} ↑{Format(snapshot.UploadBytesPerSecond)}";

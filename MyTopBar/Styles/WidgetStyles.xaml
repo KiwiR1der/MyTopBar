@@ -25,15 +25,6 @@
         <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
     </Style>
 
-    <!--  组件之间的细分隔线  -->
-    <Style x:Key="WidgetSeparator" TargetType="Border">
-        <Setter Property="Width" Value="1" />
-        <Setter Property="Height" Value="11" />
-        <Setter Property="Margin" Value="9,0" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Background" Value="{DynamicResource BarSeparatorBrush}" />
-    </Style>
-
     <!--  中区：时钟  -->
     <DataTemplate DataType="{x:Type widgets:ClockWidgetViewModel}">
         <TextBlock Cursor="Hand"
@@ -102,10 +93,4 @@
     <DataTemplate DataType="{x:Type widgets:NetworkWidgetViewModel}">
         <TextBlock Style="{StaticResource BarSecondaryText}" Text="{Binding Text}" />
     </DataTemplate>
-
-    <!--  每个组件统一的外边距  -->
-    <Style x:Key="WidgetItem" TargetType="ContentPresenter">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Margin" Value="0,0,2,0" />
-    </Style>
 </ResourceDictionary>

@@ -14,6 +14,12 @@ namespace MyTopBar.ViewModels
         private readonly WeatherDataService _data;
         private bool _disposed;
 
+        /// <summary>同一轮显示内被重复调用时的去重窗口。</summary>
+        private static readonly TimeSpan ActivateDedupWindow = TimeSpan.FromMilliseconds(300);
+
+        private DateTime _lastActivateUtc;
+        private bool _activated;
+
         [ObservableProperty]
         private string _placeName = string.Empty;
 
@@ -21,7 +27,7 @@ namespace MyTopBar.ViewModels
         private string _conditionText = string.Empty;
 
         [ObservableProperty]
-        private string _icon = "🌡️";
+        private string _icon = "qingtian";
 
         [ObservableProperty]
         private string _temperature = "--";
@@ -59,17 +65,20 @@ namespace MyTopBar.ViewModels
         {
             _data = data;
             Attach();
+
             // 首次构造即填一次数据：某些宿主下 Loaded 可能延迟或不触发，
             // 避免弹窗短暂显示全 "--"。
             Refresh();
         }
 
         /// <summary>
-        /// 重新订阅数据源并刷新一次。
+        /// 弹窗每次显示时调用：幂等重新订阅并刷新一次。
         ///
-        /// Popup 的 StaysOpen=False 会在关闭时把 Child 从视觉树摘掉并触发 Unloaded，
-        /// 再次打开又会 Loaded。若在 Unloaded 里只做退订而不提供重新订阅的入口，
-        /// 第二次打开弹窗后数据就不会再自动更新。所以这里做成可重复调用。
+        /// 幂等是必须的。弹窗已是独立 Window（Views/PopupWindow.cs），
+        /// <c>Open()</c> 里先 <c>Show()</c> 再 <c>Activate()</c>，
+        /// 而 Activate 会走 SetWindowPos 重新激活，WPF 因此连发两次 Loaded。
+        /// 之前这里无条件 Refresh()，导致每打开一次天气弹窗就走两遍数据 ——
+        /// 天气来自按次计费的 API，重复请求是真金白银。
         /// </summary>
         public void Activate()
         {
@@ -79,6 +88,16 @@ namespace MyTopBar.ViewModels
             }
 
             Attach();
+
+            // 同一轮显示里的重复 Loaded 只刷新一次。
+            // 用户关掉再打开会间隔几百毫秒以上，不会被误吞。
+            if (_activated && DateTime.UtcNow - _lastActivateUtc < ActivateDedupWindow)
+            {
+                return;
+            }
+
+            _activated = true;
+            _lastActivateUtc = DateTime.UtcNow;
             Refresh();
         }
 
@@ -118,9 +137,10 @@ namespace MyTopBar.ViewModels
         {
             _data.DetailChanged -= OnDetailChanged;
             _data.RefreshCompleted -= OnRefreshCompleted;
+            _activated = false;
         }
 
-        /// <summary>弹窗打开时调用，手动拉取最新数据。</summary>
+        /// <summary>把数据源的当前快照同步到界面属性。</summary>
         public void Refresh()
         {
             PlaceName = _data.PlaceName;
@@ -153,6 +173,7 @@ namespace MyTopBar.ViewModels
             {
                 return;
             }
+
             Deactivate();
             _disposed = true;
         }

@@ -40,8 +40,27 @@ namespace MyTopBar.Models.Settings
     {
         public ThemeMode Theme { get; set; } = ThemeMode.Light;
 
-        /// <summary>顶栏高度（WPF DIP），28–40。</summary>
-        public double BarHeight { get; set; } = 30;
+        /// <summary>
+        /// 顶栏高度（WPF DIP）。
+        /// 取值用 <see cref="BarHeightRange"/> 夹取，不要在别处再写一份数字。
+        /// </summary>
+        public double BarHeight { get; set; } = BarHeightRange.Default;
+    }
+
+    /// <summary>
+    /// 顶栏高度的唯一取值范围。
+    ///
+    /// 之前 SettingsService 夹到 24–60、SettingsViewModel / MainWindow 夹到 28–40、
+    /// 设置界面滑杆又是 28–40，三处各写一份：手改 settings.json 成 50 时顶栏只显示 40，
+    /// 而配置文件里永远留着 50。现在统一在这里定义，其余地方只引用。
+    /// </summary>
+    public static class BarHeightRange
+    {
+        public const double Min = 28;
+        public const double Max = 40;
+        public const double Default = 30;
+
+        public static double Clamp(double value) => Math.Clamp(value, Min, Max);
     }
 
     /// <summary>单个组件的持久化状态。</summary>
@@ -65,16 +84,6 @@ namespace MyTopBar.Models.Settings
         public int IntervalMinutes { get; set; } = 30;
     }
 
-    /// <summary>和风天气的身份认证方式。</summary>
-    public enum QWeatherAuthMode
-    {
-        /// <summary>
-        /// API KEY。请求头 X-QW-Api-Key。
-        /// 本地桌面应用推荐这种方式：只需一个字符串，无需在磁盘上保管私钥。
-        /// </summary>
-        ApiKey = 0
-    }
-
     /// <summary>
     /// 和风天气配置。
     ///
@@ -90,9 +99,6 @@ namespace MyTopBar.Models.Settings
         /// 在控制台-设置中查看。每个账号独立，也是身份认证的一部分。
         /// </summary>
         public string ApiHost { get; set; } = string.Empty;
-
-        /// <summary>身份认证方式。</summary>
-        public QWeatherAuthMode AuthMode { get; set; } = QWeatherAuthMode.ApiKey;
 
         /// <summary>API KEY 凭据（控制台-项目管理中创建）。</summary>
         public string ApiKey { get; set; } = string.Empty;
@@ -147,9 +153,6 @@ namespace MyTopBar.Models.Settings
     public sealed class MetricsSettings
     {
         public int IntervalMs { get; set; } = 1000;
-
-        /// <summary>true 使用 1024 进制（G），false 使用 1000 进制（GB）。</summary>
-        public bool UseIecUnits { get; set; } = true;
     }
 
     /// <summary>settings.json 根对象。</summary>

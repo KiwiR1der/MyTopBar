@@ -16,8 +16,6 @@ namespace MyTopBar.Widgets
 
         public override string DisplayName => "时钟";
 
-        public override double MinWidth => 60;
-
         public override WidgetZone DefaultZone => WidgetZone.Right;
 
         public bool ShowWeekday

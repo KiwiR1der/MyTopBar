@@ -8,7 +8,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "clock";
         public string DisplayName => "时钟";
         public WidgetZone DefaultZone => WidgetZone.Right;
-        public double MinWidth => 60;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -22,7 +21,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "lyrics";
         public string DisplayName => "歌词";
         public WidgetZone DefaultZone => WidgetZone.Center;
-        public double MinWidth => 120;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -36,7 +34,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "weather";
         public string DisplayName => "天气";
         public WidgetZone DefaultZone => WidgetZone.Right;
-        public double MinWidth => 72;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -50,7 +47,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "text";
         public string DisplayName => "文本 / 一言";
         public WidgetZone DefaultZone => WidgetZone.Center;
-        public double MinWidth => 80;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -64,7 +60,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "cpu";
         public string DisplayName => "CPU";
         public WidgetZone DefaultZone => WidgetZone.Right;
-        public double MinWidth => 72;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -78,7 +73,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "memory";
         public string DisplayName => "内存";
         public WidgetZone DefaultZone => WidgetZone.Right;
-        public double MinWidth => 96;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {
@@ -92,7 +86,6 @@ namespace MyTopBar.Widgets.Plugins
         public string Id => "network";
         public string DisplayName => "网络";
         public WidgetZone DefaultZone => WidgetZone.Right;
-        public double MinWidth => 104;
 
         public WidgetViewModelBase Create(IServiceProvider services)
         {

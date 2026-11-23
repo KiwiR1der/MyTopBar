@@ -29,8 +29,6 @@ namespace MyTopBar.Widgets
         [ObservableProperty]
         private bool _isEnabled = true;
 
-        /// <summary>渲染宽度被压缩时的最小宽度，供低优先级裁剪使用。</summary>
-        public virtual double MinWidth => 0;
 
         public void Dispose()
         {

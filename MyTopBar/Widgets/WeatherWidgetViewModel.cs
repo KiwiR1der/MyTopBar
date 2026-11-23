@@ -14,16 +14,15 @@ namespace MyTopBar.Widgets
         [ObservableProperty]
         private string _text = "天气 --";
 
+        /// <summary>矢量图标的资源 key（见 <see cref="WeatherIconKey"/>），不是 emoji。</summary>
         [ObservableProperty]
-        private string _icon = "🌡️";
+        private string _icon = WeatherIconKey.Placeholder;
 
         public override string Id => "weather";
 
         public override string DisplayName => "天气";
 
         public override WidgetZone DefaultZone => WidgetZone.Right;
-
-        public override double MinWidth => 72;
 
         public WeatherWidgetViewModel(WeatherDataService data)
         {

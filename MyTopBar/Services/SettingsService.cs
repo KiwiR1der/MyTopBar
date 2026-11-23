@@ -103,9 +103,6 @@ namespace MyTopBar.Services
         /// <summary>当前生效的配置。修改后调用 <see cref="Save"/> 持久化。</summary>
         public AppSettings Current { get; private set; }
 
-        /// <summary>配置被外部替换或首次加载完成后触发。</summary>
-        public event EventHandler? Changed;
-
         private AppSettings Load()
         {
             try
@@ -181,13 +178,14 @@ namespace MyTopBar.Services
                 settings.Api.QWeather.IntervalMinutes = 240;
             }
 
-            if (double.IsNaN(settings.Appearance.BarHeight) || settings.Appearance.BarHeight < 24)
+            if (double.IsNaN(settings.Appearance.BarHeight)
+                || settings.Appearance.BarHeight < BarHeightRange.Min)
             {
-                settings.Appearance.BarHeight = 30;
+                settings.Appearance.BarHeight = BarHeightRange.Default;
             }
-            else if (settings.Appearance.BarHeight > 60)
+            else if (settings.Appearance.BarHeight > BarHeightRange.Max)
             {
-                settings.Appearance.BarHeight = 60;
+                settings.Appearance.BarHeight = BarHeightRange.Max;
             }
 
             if (settings.Metrics.IntervalMs < 250)
@@ -252,15 +250,6 @@ namespace MyTopBar.Services
             {
                 // 落盘失败不应影响运行中的顶栏。
             }
-        }
-
-        /// <summary>替换当前配置（设置窗口导入/重置时使用）。</summary>
-        public void Replace(AppSettings settings)
-        {
-            // Replace 之后一律会 Save，迁移标记没有意义，丢弃即可。
-            Current = Normalize(settings, out _);
-            Changed?.Invoke(this, EventArgs.Empty);
-            Save();
         }
 
         public void Dispose()

@@ -84,8 +84,6 @@ namespace MyTopBar.Widgets
 
         public override WidgetZone DefaultZone => WidgetZone.Center;
 
-        public override double MinWidth => 120;
-
         /// <summary>是否显示下一句。</summary>
         public bool ShowNextLine { get; set; }
 

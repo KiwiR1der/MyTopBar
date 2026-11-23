@@ -23,8 +23,6 @@ namespace MyTopBar.Widgets
 
         public override WidgetZone DefaultZone => WidgetZone.Right;
 
-        public override double MinWidth => 72;
-
         private void OnMetricsUpdated(SystemMetricsSnapshot snapshot)
         {
             Text = $"CPU {snapshot.CpuPercent:0}%";
