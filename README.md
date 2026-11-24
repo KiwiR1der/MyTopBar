@@ -200,16 +200,28 @@ MyTopBar/
 docs/                README 截图
 ```
 
-## 依赖
+## 依赖与致谢
 
-| 包 | 用途 |
+本项目离不开以下优秀的开源项目、字体与开放服务，在此一并致谢：
+
+### 开源库
+
+| 项目 | 用途 |
 |---|---|
-| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | `[ObservableProperty]` / `[RelayCommand]` |
-| [FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) | 亚克力毛玻璃与窗口圆角 |
-| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入 |
-| [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
+| [FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) | 顶栏、弹窗与设置窗口的亚克力毛玻璃（`WindowMaterial` / `UseWindowComposition`）、窗口圆角（`WindowCorner`）与 DWM 动画支持 |
+| [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | MVVM 源生成器（`[ObservableProperty]` / `[RelayCommand]`） |
+| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入容器 |
+| [NAudio](https://github.com/naudio/NAudio) | Windows CoreAudio 音量读取与控制 |
 
-字体使用 [HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，由华为发布，采用 HarmonyOS Sans Fonts License：可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，需保留版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，含五个字重，版权归华为所有。
+特别感谢 [TwilightLemon/FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) 提供了稳定、顺手的 WPF 亚克力合成与窗口材质封装。
+
+### 字体、图标与数据服务
+
+- **字体**：[HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，由华为发布，采用 HarmonyOS Sans Fonts License：可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，需保留版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，含五个字重，版权归华为所有。
+- **矢量图标**：天气与系统指标彩色矢量图标源自 [iconfont 阿里巴巴矢量图标库](https://www.iconfont.cn/)，转换为 WPF `DrawingImage` 资源内嵌使用。
+- **天气数据**：[和风天气（QWeather）](https://dev.qweather.com/)，提供实时天气、逐日预报与城市搜索（GeoAPI）。
+- **歌词数据**：[LRCLIB](https://lrclib.net/)，作为同步歌词查询的开放歌词库回退来源。
+- **文本句子**：[一言（Hitokoto）](https://hitokoto.cn/)，提供文本组件的随机句子接口。
 
 ## 许可证
 
