@@ -41,8 +41,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="8,4" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="CaretBrush" Value="{DynamicResource InputForegroundBrush}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -82,8 +82,8 @@
     <Style x:Key="SettingsComboBoxItem" TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
         <Setter Property="Padding" Value="9,6" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Template">
             <Setter.Value>
@@ -118,8 +118,8 @@
         <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="9,4" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="ItemContainerStyle" Value="{StaticResource SettingsComboBoxItem}" />
         <Setter Property="Template">
@@ -212,8 +212,8 @@
     <!--  ==========  复选框  ==========  -->
     <Style x:Key="SettingsCheckBox" TargetType="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
@@ -348,8 +348,8 @@
     <!--  ==========  设置窗口左侧导航项（RadioButton 充当分段选择器）  ==========  -->
     <Style x:Key="SettingsNavItem" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="10,7" />
         <Setter Property="Margin" Value="0,1" />

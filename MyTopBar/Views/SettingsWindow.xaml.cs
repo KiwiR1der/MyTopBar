@@ -7,7 +7,6 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 
 namespace MyTopBar.Views
@@ -23,7 +22,7 @@ namespace MyTopBar.Views
     public partial class SettingsWindow : Window
     {
         private readonly ViewModels.SettingsViewModel _viewModel;
-        private readonly GlassEffect.GlassRegistration _glass;
+        private readonly ThemeService _theme;
 
         /// <summary>任一设置项改动后触发，供顶栏即时应用。</summary>
         public event EventHandler? SettingsApplied;
@@ -33,6 +32,7 @@ namespace MyTopBar.Views
             InitializeComponent();
 
             _viewModel = App.Current.Services.GetRequiredService<ViewModels.SettingsViewModel>();
+            _theme = App.Current.Services.GetRequiredService<ThemeService>();
             DataContext = _viewModel;
             /*
              * 用命名方法而不是 lambda：OnClosed 里要退订，lambda 无法 -=。
@@ -41,40 +41,23 @@ namespace MyTopBar.Views
              */
             _viewModel.SettingsApplied += OnViewModelSettingsApplied;
 
-            // 一键注册毛玻璃：挂 SourceInitialized / Loaded / ThemeChanged，
-            // 主题明暗切换时 DWM 边框/阴影颜色会自动跟随（此前这里缺失该订阅）。
-            _glass = GlassEffect.Register(
-                this, App.Current.Services.GetRequiredService<ThemeService>());
+            SyncWindowMaterial();
+            _theme.BackdropChanged += OnBackdropChanged;
 
             Loaded += OnLoaded;
             Closed += OnClosed;
         }
 
-        /// <summary>
-        /// 关键：必须在这里再把 CompositionTarget 置一次透明。
-        ///
-        /// 在 SourceInitialized 阶段设置会被 WPF 的首次合成覆盖，
-        /// 结果是整个窗口变成纯黑（实测背景采样为 RGB(0,0,0)）。
-        /// 顶栏主窗口也踩过同样的坑，见 MainWindow.OnLoaded 的注释。
-        /// </summary>
+        private void OnBackdropChanged(object? sender, EventArgs e)
+            => SyncWindowMaterial();
+
+        private void SyncWindowMaterial()
+            => _theme.SyncWindowMaterial(windowMaterial, isBar: false);
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            /*
-             * 延后一帧再补一次透明。
-             *
-             * 直接在 Loaded 里设 CompositionTarget.BackgroundColor 无效——
-             * 实测背景仍是纯黑 RGB(0,0,0)。原因是窗口刚完成首次合成，
-             * 此时改动会被渲染批次忽略；必须等当前批处理结束后再设，
-             * 并配合一次重绘，透明客户区才会真正生效。
-             *
-             * 顶栏主窗口没这个问题，是因为它的 OnLoaded 里还做了
-             * Start() / HookSortGestures() 等大量工作，天然把材质应用推迟了。
-             */
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
-                GlassEffect.SetTransparentClientArea(this);
-                InvalidateVisual();
-
                 /*
                  * 抢前台。
                  *
@@ -114,11 +97,10 @@ namespace MyTopBar.Views
         {
             Loaded -= OnLoaded;
             Closed -= OnClosed;
+            _theme.BackdropChanged -= OnBackdropChanged;
 
             _viewModel.SettingsApplied -= OnViewModelSettingsApplied;
             _viewModel.Dispose();
-
-            _glass.Dispose();
         }
 
         /// <summary>

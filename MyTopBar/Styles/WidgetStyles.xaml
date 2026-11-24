@@ -9,19 +9,18 @@
     <!--  顶栏内所有组件共用的文字样式  -->
     <Style x:Key="BarText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontWeight" Value="{StaticResource FontWeightEmphasis}" />
-        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="TextWrapping" Value="NoWrap" />
-        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
     </Style>
 
     <Style x:Key="BarSecondaryText" BasedOn="{StaticResource BarText}" TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource BarSecondaryForegroundBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}" />
         <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
     </Style>
 

@@ -1,17 +1,26 @@
 <Window x:Class="MyTopBar.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:fluent="https://github.com/TwilightLemon/FluentWpfCore"
         Title="MyTopBar Settings"
         Width="720"
         Height="640"
+        fluent:WindowMaterial.WindowCorner="Round"
         AllowsTransparency="False"
         Background="Transparent"
         Foreground="{DynamicResource MenuForegroundBrush}"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
         WindowStartupLocation="CenterScreen">
+    <fluent:WindowMaterial.Material>
+        <fluent:WindowMaterial x:Name="windowMaterial"
+                               MaterialMode="Acrylic"
+                               UseWindowComposition="True" />
+    </fluent:WindowMaterial.Material>
     <Window.Resources>
         <!--  设置窗口里重复出现的小标题 / 标签，统一收口  -->
         <Style x:Key="SectionHeader" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+            <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
             <Setter Property="FontWeight" Value="{StaticResource FontWeightHeading}" />
             <Setter Property="FontSize" Value="16" />
             <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
@@ -21,16 +30,16 @@
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Width" Value="110" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+            <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
             <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
         </Style>
 
         <Style x:Key="HintText" TargetType="TextBlock">
             <Setter Property="Margin" Value="8,0,0,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+            <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
             <Setter Property="Foreground" Value="{DynamicResource MenuSecondaryForegroundBrush}" />
         </Style>
 
@@ -38,7 +47,7 @@
         <Style x:Key="InfoCard" TargetType="Border">
             <Setter Property="Margin" Value="0,0,0,12" />
             <Setter Property="Padding" Value="10,8" />
-            <Setter Property="Background" Value="{DynamicResource PopupGlassBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceTintBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="6" />
@@ -58,10 +67,7 @@
     </Window.Resources>
 
     <!--
-        根容器必须显式透明。
-        任何默认背景不透明的容器都会整块盖住毛玻璃层，
-        表现为窗口纯黑（实测采样 RGB(0,0,0)）。
-        顶栏主窗口的 RootGrid 同理，那里也是显式写的 Background="Transparent"。
+        根容器必须显式透明，让 DWM 原生亚克力模糊与染色层直接透出。
     -->
     <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
@@ -71,13 +77,13 @@
 
         <!--  ==========  左侧导航  ==========  -->
         <Border Grid.Column="0"
-                Background="{DynamicResource PopupGlassBrush}"
+                Background="{DynamicResource SurfaceTintBrush}"
                 BorderBrush="{DynamicResource MenuSeparatorBrush}"
                 BorderThickness="0,0,1,0"
                 Padding="10,14,10,14">
             <StackPanel>
                 <TextBlock Margin="4,0,0,12"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontWeight="{StaticResource FontWeightHeading}"
                            FontSize="15"
                            Foreground="{DynamicResource MenuForegroundBrush}"
@@ -132,6 +138,17 @@
                                   Style="{StaticResource SettingsComboBox}" />
                     </StackPanel>
 
+                    <StackPanel Margin="0,0,0,12" Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="通透感" />
+                        <ComboBox Width="120"
+                                  ItemsSource="{Binding BackdropTranslucencies}"
+                                  SelectedItem="{Binding SelectedTranslucency, Mode=TwoWay}"
+                                  Style="{StaticResource SettingsComboBox}" />
+                        <TextBlock Margin="10,0,0,0"
+                                   Style="{StaticResource HintText}"
+                                   Text="{Binding BackdropHint}" />
+                    </StackPanel>
+
                     <StackPanel Margin="0,0,0,16" Orientation="Horizontal">
                         <TextBlock Style="{StaticResource FieldLabel}" Text="顶栏高度" />
                         <Slider Width="200"
@@ -143,6 +160,29 @@
                                 TickFrequency="1"
                                 Value="{Binding BarHeight, Mode=TwoWay}" />
                         <TextBlock Style="{StaticResource HintText}" Text="{Binding BarHeight, StringFormat={}{0:0}px}" />
+                    </StackPanel>
+
+                    <!--  ==========  字体  ==========  -->
+                    <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="字体" />
+                        <ComboBox Width="240"
+                                  IsTextSearchEnabled="True"
+                                  ItemsSource="{Binding FontFamilies}"
+                                  MaxDropDownHeight="320"
+                                  SelectedItem="{Binding SelectedFontFamily, Mode=TwoWay}"
+                                  Style="{StaticResource SettingsComboBox}"
+                                  ToolTip="内置字体，或系统已安装的任意字体" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,16" Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="字号" />
+                        <ComboBox Width="120"
+                                  ItemsSource="{Binding FontSizes}"
+                                  SelectedItem="{Binding SelectedFontSize, Mode=TwoWay}"
+                                  Style="{StaticResource SettingsComboBox}" />
+                        <TextBlock Margin="10,0,0,0"
+                                   Style="{StaticResource HintText}"
+                                   Text="{Binding FontScaleHint}" />
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
@@ -192,28 +232,28 @@
                     <Border Style="{StaticResource InfoCard}">
                         <StackPanel>
                             <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,6"
                                        Text="使用新版 API（/weather/v1/current）与请求头认证。旧的 devapi.qweather.com 公共域名已列入停用计划，不再使用。" />
 
                             <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,2"
                                        Text="1. API Host：控制台 → 设置 → API Host，形如 h2a9cf3mhs.xy.qweatherapi.com（每账号独立，不可猜测）" />
 
                             <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        TextWrapping="Wrap"
                                        Margin="0,0,0,2"
                                        Text="2. API Key：控制台 → 项目管理 → 凭据 → 创建凭据，认证方式选 API KEY" />
 
                             <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                       FontFamily="{StaticResource AppFont}"
+                                       FontFamily="{DynamicResource AppFont}"
                                        FontSize="12"
                                        TextWrapping="Wrap"
                                        Text="3. 经纬度：新版按经纬度定位（旧版是城市 ID）。北京 39.92 / 116.41，最多两位小数。" />
@@ -250,7 +290,7 @@
                                 Command="{Binding SearchCityCommand}"
                                 Content="搜索"
                                 Cursor="Hand"
-                                FontFamily="{StaticResource AppFont}"
+                                FontFamily="{DynamicResource AppFont}"
                                 FontSize="13" />
                     </StackPanel>
 
@@ -267,8 +307,8 @@
                                 <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
                                 <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
                                 <Setter Property="BorderThickness" Value="1" />
-                                <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-                                <Setter Property="FontSize" Value="13" />
+                                <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+                                <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
                                 <Setter Property="Foreground" Value="{DynamicResource InputForegroundBrush}" />
                                 <Setter Property="Visibility" Value="Visible" />
                                 <Style.Triggers>
@@ -292,14 +332,14 @@
                         <TextBlock Style="{StaticResource FieldLabel}" Text="当前地点" />
                         <TextBlock VerticalAlignment="Center"
                                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="13"
                                    Text="{Binding QweatherSelectedPlace}" />
                     </StackPanel>
 
                     <TextBlock Margin="112,0,0,8"
                                Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                TextWrapping="Wrap"
                                Text="{Binding QweatherSearchStatus}" />
@@ -339,7 +379,7 @@
                                 Padding="14,6"
                                 Command="{Binding ApplyQWeatherCommand}"
                                 Content="应用并测试"
-                                FontFamily="{StaticResource AppFont}"
+                                FontFamily="{DynamicResource AppFont}"
                                 FontSize="13"
                                 Cursor="Hand">
                             <Button.Style>
@@ -448,7 +488,7 @@
 
                     <Border Style="{StaticResource InfoCard}">
                         <TextBlock Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12"
                                    TextWrapping="Wrap"
                                    Text="同时开着浏览器和音乐播放器时，系统会跟随最后发声的那个，歌词可能跳到网页上正在播的内容。指定来源后只读取该应用的媒体信息。" />
@@ -465,7 +505,7 @@
 
                     <TextBlock Margin="112,0,0,14"
                                Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                TextWrapping="Wrap"
                                Text="列表里只显示当前正在播放的来源；关掉播放器后该项仍会保留，不会丢失配置。" />
@@ -493,7 +533,7 @@
 
                     <TextBlock Margin="24,0,0,14"
                                Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
-                               FontFamily="{StaticResource AppFont}"
+                               FontFamily="{DynamicResource AppFont}"
                                FontSize="12"
                                TextWrapping="Wrap"
                                Text="写入当前用户的启动项，仅登录本账号时生效，不需要管理员权限。若在任务管理器「启动」页里被禁用，此处会显示为关闭。" />
@@ -515,11 +555,11 @@
                                 Command="{Binding OpenLogDirectoryCommand}"
                                 Content="打开日志目录"
                                 Cursor="Hand"
-                                FontFamily="{StaticResource AppFont}"
+                                FontFamily="{DynamicResource AppFont}"
                                 FontSize="13" />
                         <TextBlock Margin="10,0,0,0"
                                    VerticalAlignment="Center"
-                                   FontFamily="{StaticResource AppFont}"
+                                   FontFamily="{DynamicResource AppFont}"
                                    FontSize="12"
                                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                                    Text="程序目录\logs\" />

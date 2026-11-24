@@ -23,6 +23,7 @@ namespace MyTopBar.ViewModels
         private readonly ThemeService _theme;
         private readonly Widgets.LyricsWidgetViewModel _lyrics;
         private readonly Infrastructure.Interfaces.IDialogService _dialogs;
+        private readonly FontService _fonts;
 
         /// <summary>
         /// 待退订的委托。transient VM 订阅单例服务时统一登记在这里，
@@ -38,6 +39,9 @@ namespace MyTopBar.ViewModels
 
         [ObservableProperty]
         private ThemeOption _selectedTheme;
+
+        [ObservableProperty]
+        private TranslucencyOption _selectedTranslucency;
 
         [ObservableProperty]
         private double _barHeight;
@@ -108,6 +112,23 @@ namespace MyTopBar.ViewModels
         [ObservableProperty]
         private MediaSourceOption? _selectedMediaSource;
 
+
+        // ==========  字体  ==========
+
+        /// <summary>可选字体：内置字体排在首位，其后是系统已安装字体。</summary>
+        public IReadOnlyList<string> FontFamilies { get; }
+
+        /// <summary>可选字号（物理像素）。都是整数，避免半像素栅格错位。</summary>
+        public IReadOnlyList<double> FontSizes { get; } = [11, 12, 13, 14, 15, 16];
+
+        [ObservableProperty]
+        private string _selectedFontFamily;
+
+        [ObservableProperty]
+        private double _selectedFontSize;
+
+        /// <summary>当前缩放与换算结果的说明，显示在字号旁边。</summary>
+        public string FontScaleHint { get; private set; } = string.Empty;
         [ObservableProperty]
         private bool _hitokotoEnabled;
 
@@ -121,6 +142,19 @@ namespace MyTopBar.ViewModels
             new(ThemeMode.Dark, "深色")
         ];
 
+        /// <summary>背景通透感档位。</summary>
+        public IReadOnlyList<TranslucencyOption> BackdropTranslucencies { get; } =
+        [
+            new(BackdropTranslucency.UltraClear, "极透"),
+            new(BackdropTranslucency.Clear, "通透"),
+            new(BackdropTranslucency.Balanced, "均衡"),
+            new(BackdropTranslucency.Frosted, "厚重"),
+            new(BackdropTranslucency.Opaque, "不透明")
+        ];
+
+        /// <summary>当前通透感档位的实时说明。</summary>
+        public string BackdropHint { get; private set; } = string.Empty;
+
         /// <summary>组件开关列表。</summary>
         public ObservableCollection<WidgetToggleItem> Widgets { get; } = new();
 
@@ -131,18 +165,36 @@ namespace MyTopBar.ViewModels
         public SettingsViewModel(
             SettingsService settings,
             ThemeService theme,
+            FontService fonts,
             WidgetRegistry registry,
             LyricsWidgetViewModel lyrics,
             Infrastructure.Interfaces.IDialogService dialogs)
         {
             _settings = settings;
             _theme = theme;
+            _fonts = fonts;
             _lyrics = lyrics;
             _dialogs = dialogs;
 
+            // 字体列表要在读取配置前准备好，否则下拉框初始值匹配不上。
+            FontFamilies = FontService.GetInstalledFontNames();
+
             AppSettings current = settings.Current;
             _selectedTheme = ThemeModes.FirstOrDefault(t => t.Mode == current.Appearance.Theme) ?? ThemeModes[0];
+            _selectedTranslucency = BackdropTranslucencies.FirstOrDefault(t => t.Translucency == current.Appearance.Translucency) ?? BackdropTranslucencies[1];
             _barHeight = current.Appearance.BarHeight;
+            UpdateBackdropHint();
+
+            // 字体：配置为空表示使用内置字体。
+            string savedFont = string.IsNullOrWhiteSpace(current.Appearance.FontFamily)
+                ? FontService.BuiltinFontName
+                : current.Appearance.FontFamily;
+            _selectedFontFamily = FontFamilies.Contains(savedFont) ? savedFont : FontService.BuiltinFontName;
+
+            double savedPixels = current.Appearance.FontSizePixels;
+            _selectedFontSize = FontSizes.Contains(savedPixels) ? savedPixels : 13;
+
+            UpdateScaleHint();
 
             QWeatherSettings qw = current.Api.QWeather;
             /*
@@ -221,6 +273,51 @@ namespace MyTopBar.ViewModels
         /// <summary>设置变化时通知主窗口立即应用（无需重启）。</summary>
         public event EventHandler? SettingsApplied;
 
+        /// <summary>
+        /// 切换字体。立即写入配置并应用到全局资源，
+        /// 界面通过 DynamicResource 自动重刷，无需重启。
+        /// </summary>
+        partial void OnSelectedFontFamilyChanged(string value)
+        {
+            if (_loading || string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            _settings.Current.Appearance.FontFamily =
+                string.Equals(value, FontService.BuiltinFontName, StringComparison.OrdinalIgnoreCase)
+                    ? string.Empty
+                    : value;
+
+            _fonts.Apply(value, _selectedFontSize);
+            _settings.Save();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>切换字号（WPF DIP，高分屏按系统缩放自动高清光栅化）。</summary>
+        partial void OnSelectedFontSizeChanged(double value)
+        {
+            if (_loading || value <= 0)
+            {
+                return;
+            }
+
+            _settings.Current.Appearance.FontSizePixels = value;
+            _fonts.Apply(_selectedFontFamily, value);
+            _settings.Save();
+            UpdateScaleHint();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>刷新「当前缩放 → 实际物理像素」的说明文字。</summary>
+        private void UpdateScaleHint()
+        {
+            double scale = FontService.GetSystemScale();
+            double physicalPx = Math.Round(SelectedFontSize * scale, 1);
+            FontScaleHint = $"当前缩放 {scale * 100:0}%，{SelectedFontSize:0} DIP ≈ {physicalPx:0.#} 物理像素";
+            OnPropertyChanged(nameof(FontScaleHint));
+        }
+
         partial void OnBarHeightChanged(double value)
         {
             if (_loading)
@@ -243,6 +340,32 @@ namespace MyTopBar.ViewModels
             _settings.Current.Appearance.Theme = value.Mode;
             _theme.Apply(value.Mode);
             _settings.Save();
+            UpdateBackdropHint();
+        }
+
+        partial void OnSelectedTranslucencyChanged(TranslucencyOption value)
+        {
+            if (_loading || value is null)
+            {
+                return;
+            }
+
+            _settings.Current.Appearance.Translucency = value.Translucency;
+            _theme.ApplyTranslucency(value.Translucency);
+            _settings.Save();
+            UpdateBackdropHint();
+        }
+
+        private void UpdateBackdropHint()
+        {
+            BackdropTranslucency translucency = SelectedTranslucency.Translucency;
+            bool isDark = SelectedTheme.Mode == ThemeMode.Dark;
+
+            System.Windows.Media.Color barColor = ThemeService.GetAcrylicTintColor(isDark, translucency, isBar: true);
+            int opacityPercent = (int)Math.Round(barColor.A / 255.0 * 100.0);
+            BackdropHint = $"顶栏磨砂遮罩约 {opacityPercent}%";
+
+            OnPropertyChanged(nameof(BackdropHint));
         }
 
         partial void OnQweatherApiHostChanged(string value)
@@ -583,6 +706,12 @@ namespace MyTopBar.ViewModels
 
     /// <summary>主题下拉项。</summary>
     public sealed record ThemeOption(ThemeMode Mode, string Display)
+    {
+        public override string ToString() => Display;
+    }
+
+    /// <summary>背景通透感下拉项。</summary>
+    public sealed record TranslucencyOption(BackdropTranslucency Translucency, string Display)
     {
         public override string ToString() => Display;
     }

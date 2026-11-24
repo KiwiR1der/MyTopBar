@@ -10,7 +10,6 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 using MyTopBar.Models.Settings;
 using MyTopBar.ViewModels;
@@ -128,7 +127,7 @@ namespace MyTopBar
             Loaded += OnLoaded;
             Closed += OnClosed;
 
-            _theme.ThemeChanged += OnThemeChanged;
+            _theme.BackdropChanged += OnBackdropChanged;
 
             _viewModel.SettingsRequested += OnSettingsRequested;
             _viewModel.AppearanceChanged += OnAppearanceChanged;
@@ -141,11 +140,6 @@ namespace MyTopBar
         private void OnSourceInitialized(object? sender, EventArgs e)
         {
             IntPtr handle = new WindowInteropHelper(this).Handle;
-            if (PresentationSource.FromVisual(this) is HwndSource source && source.CompositionTarget is not null)
-            {
-                // 关键：让 WPF 不绘制不透明背景，DWM 材质才能透出。
-                source.CompositionTarget.BackgroundColor = Colors.Transparent;
-            }
 
             /*
              * 顶栏不能抢走前台窗口的焦点。
@@ -156,16 +150,17 @@ namespace MyTopBar
              */
             NativeMethods.MakeNonActivating(handle);
 
-            _theme.Apply(_settings.Current.Appearance.Theme);
-            ApplyBlurMaterial(_theme.IsDark, handle);
+            AppearanceSettings appearance = _settings.Current.Appearance;
+            _theme.Apply(appearance.Theme, appearance.Translucency);
+            SyncWindowMaterial();
         }
 
-        private void OnThemeChanged(object? sender, bool isDark)
-        {
-            // 毛玻璃本身不随明暗变化（它只是模糊背景），
-            // 但 DWM 的明暗标志要同步，边框/阴影颜色会跟着变。
-            ApplyBlurMaterial(isDark, new WindowInteropHelper(this).Handle);
-        }
+        private void OnBackdropChanged(object? sender, EventArgs e)
+            => SyncWindowMaterial();
+
+        /// <summary>同步顶栏的亚克力明暗与通透感。</summary>
+        private void SyncWindowMaterial()
+            => _theme.SyncWindowMaterial(windowMaterial, isBar: true);
 
         /// <summary>设置窗口改动后立即应用：高度、组件启停。</summary>
         private void OnAppearanceChanged(object? sender, EventArgs e)
@@ -263,41 +258,21 @@ namespace MyTopBar
             AppLog.Info(isFullScreen ? "检测到全屏应用，隐藏顶栏" : "全屏应用退出，恢复顶栏");
         }
 
-        /// <summary>
-        /// 应用毛玻璃：委托给 GlassEffect。
-        /// 材质固定为 BLURBEHIND 的理由见 GlassEffect 的注释。
-        /// </summary>
-        private void ApplyBlurMaterial(bool isDark, IntPtr handle)
-        {
-            GlassEffect.Apply(handle, isDark, roundCorners: false);
-        }
-
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             _viewModel.Start();
             HookSortGestures();
 
-            // 句柄在 Loaded 阶段一定有效。
-            // CompositionTarget 必须在窗口已渲染后再置透明，否则会被 WPF 的首次合成覆盖成黑色，
-            // 这正是之前整条顶栏呈纯黑 RGB(0,0,0) 的原因。
-            IntPtr handle = new WindowInteropHelper(this).Handle;
-            if (PresentationSource.FromVisual(this) is HwndSource source && source.CompositionTarget is not null)
-            {
-                source.CompositionTarget.BackgroundColor = Colors.Transparent;
-            }
-
-            // 直接按配置重新解析一次明暗，避免依赖事件到达顺序
-            // （SourceInitialized 可能晚于 Loaded，导致这里读到过期的 _theme.IsDark）。
-            _theme.Apply(_settings.Current.Appearance.Theme);
-
-            ApplyBlurMaterial(_theme.IsDark, handle);
+            AppearanceSettings appearance = _settings.Current.Appearance;
+            _theme.Apply(appearance.Theme, appearance.Translucency);
+            SyncWindowMaterial();
         }
 
         private void OnClosed(object? sender, EventArgs e)
         {
             _appBarController.FullScreenAppChanged -= OnFullScreenAppChanged;
 
-            _theme.ThemeChanged -= OnThemeChanged;
+            _theme.BackdropChanged -= OnBackdropChanged;
             _viewModel.AppearanceChanged -= OnAppearanceChanged;
             _viewModel.SettingsRequested -= OnSettingsRequested;
             _sortModeTimer.Stop();

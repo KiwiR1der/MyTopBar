@@ -1,5 +1,3 @@
-using MyTopBar.Infrastructure.Material;
-
 namespace MyTopBar.Models.Settings
 {
     /// <summary>应用主题偏好。</summary>
@@ -30,21 +28,50 @@ namespace MyTopBar.Models.Settings
         Hitokoto = 1
     }
 
-    /// <summary>
-    /// 外观设置。
-    ///
-    /// 材质已固定为毛玻璃（ACCENT_ENABLE_BLURBEHIND），不再可配置，
-    /// 因此这里没有 Material 字段。
-    /// </summary>
+    /// <summary>背景通透感档位。</summary>
+    public enum BackdropTranslucency
+    {
+        /// <summary>极透：最大程度透出壁纸/底层内容。</summary>
+        UltraClear = 0,
+
+        /// <summary>通透：默认档位，通透自然。</summary>
+        Clear = 1,
+
+        /// <summary>均衡：通透与文字对比度兼顾。</summary>
+        Balanced = 2,
+
+        /// <summary>厚重：强遮罩，复杂壁纸下最易读。</summary>
+        Frosted = 3,
+
+        /// <summary>不透明：几乎不透底。</summary>
+        Opaque = 4
+    }
+
+    /// <summary>外观设置。</summary>
     public sealed class AppearanceSettings
     {
         public ThemeMode Theme { get; set; } = ThemeMode.Light;
+
+        /// <summary>亚克力背景通透感档位，默认通透。</summary>
+        public BackdropTranslucency Translucency { get; set; } = BackdropTranslucency.Clear;
 
         /// <summary>
         /// 顶栏高度（WPF DIP）。
         /// 取值用 <see cref="BarHeightRange"/> 夹取，不要在别处再写一份数字。
         /// </summary>
         public double BarHeight { get; set; } = BarHeightRange.Default;
+
+        /// <summary>
+        /// 字体名。空或 "HarmonyOS Sans SC" 表示使用内置字体，
+        /// 其余值为系统已安装的字体名。
+        /// </summary>
+        public string FontFamily { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 目标字号（物理像素）。运行时按「该值 / 当前 DPI 缩放」换算成 DIP，
+        /// 保证字形栅格落在整像素上。默认 13，接近系统 UI 的 Segoe UI 9pt。
+        /// </summary>
+        public double FontSizePixels { get; set; } = 13;
     }
 
     /// <summary>

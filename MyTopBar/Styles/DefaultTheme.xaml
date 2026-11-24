@@ -9,6 +9,15 @@
          继承它的 SemiBold/Bold/Light 全部失效）。
         注意：没有 SemiBold(600) 字形，SemiBold/DemiBold 会被吸附到 Bold(700)，并非半粗。
     -->
+    <!--
+        字体与字号默认值。运行时由 FontService 覆盖为用户设置：
+        - AppFont          当前字体（内置 HarmonyOS Sans SC 或系统字体）
+        - AppFontSize      主字号（按 DPI 反算，使物理像素落在整数上）
+        - AppFontSizeSmall 次要字号
+        界面一律用 DynamicResource 引用，才能随设置即时刷新。
+    -->
+    <sys:Double x:Key="AppFontSize" xmlns:sys="clr-namespace:System;assembly=mscorlib">13</sys:Double>
+    <sys:Double x:Key="AppFontSizeSmall" xmlns:sys="clr-namespace:System;assembly=mscorlib">12</sys:Double>
     <FontFamily x:Key="AppFont">pack://application:,,,/Assets/Fonts/#HarmonyOS Sans SC</FontFamily>
 
     <!--
@@ -46,11 +55,13 @@
     <SolidColorBrush x:Key="CalendarTodayForegroundBrush" Color="#FFFFFFFF" />
 
     <!--
-        弹窗的毛玻璃底色。必须接近透明——不透明会把模糊层完全盖住。
-        保留极淡的一层只为让文字有个稳定的对比基底。
-        由 ThemeService.ApplyBrushes 按明暗覆盖。
+        弹窗与次级表面的毛玻璃画刷：
+        - PopupGlassBrush：弹窗外层保持完全透明，直接透出 DWM 原生 Acrylic 染色层，避免双重叠加发闷。
+        - SurfaceTintBrush：设置窗口导航栏、信息卡片与媒体控制按钮使用的极淡层次基底。
+        均由 ThemeService.ApplyBrushes 按明暗覆盖。
     -->
-    <SolidColorBrush x:Key="PopupGlassBrush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="PopupGlassBrush" Color="#00FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceTintBrush" Color="#12000000" />
 
     <!--  输入控件（设置窗口）：WPF 默认模板不跟随主题，必须显式指定  -->
     <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFFFF" />
@@ -69,9 +80,9 @@
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#330A84FF" />
 
     <!--  顶栏组件前景色：浅色主题基准，深色切换时由 ThemeService 覆盖  -->
-    <SolidColorBrush x:Key="BarForegroundBrush" Color="#E6000000" />
+    <SolidColorBrush x:Key="BarForegroundBrush" Color="#FF141414" />
 
-    <SolidColorBrush x:Key="BarSecondaryForegroundBrush" Color="#99000000" />
+    <SolidColorBrush x:Key="BarSecondaryForegroundBrush" Color="#CC000000" />
 
     <!--
         分隔线：需要比前景色更淡但仍可辨识。
@@ -81,18 +92,9 @@
     <SolidColorBrush x:Key="BarSeparatorBrush" Color="#1A000000" />
 
     <Style TargetType="Window">
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="UseLayoutRounding" Value="True" />
-        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
-        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
-    </Style>
-
-    <Style TargetType="TextBlock">
-        <Setter Property="RenderOptions.ClearTypeHint" Value="Enabled" />
-        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
-        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
     </Style>
 
     <Style x:Key="AppleMenuButton" TargetType="Button">
@@ -131,8 +133,8 @@
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Padding" Value="8,4" />
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Template">
             <Setter.Value>

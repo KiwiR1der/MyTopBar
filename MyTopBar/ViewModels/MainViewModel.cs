@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MyTopBar.Infrastructure.Interfaces;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models;
 using MyTopBar.Models.Settings;
 using MyTopBar.Services;

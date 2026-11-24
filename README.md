@@ -9,7 +9,8 @@ Windows 上的 macOS 风格顶栏。通过 Shell 的 AppBar 协议真正占用�
 ## 特性
 
 - **工作区占位**：注册为 AppBar，最大化窗口不会盖住顶栏
-- **毛玻璃背景**：只做高斯模糊，不加噪点或色调
+- **亚克力毛玻璃**：基于 FluentWpfCore 的 Acrylic 合成层，支持浅色 / 深色主题与 5 档通透感即时调节
+- **字体可定制**：内嵌 HarmonyOS Sans SC（5 档字重），支持实时切换任意系统字体与字号
 - **可插拔组件**：中区与右区独立装配，可启停、可拖动排序
 - **不抢焦点**：点击顶栏不会让当前窗口失焦
 - **便携**：配置存在程序目录 `settings.json`，不写 `%AppData%`
@@ -75,8 +76,11 @@ dotnet run --project MyTopBar
 ```jsonc
 {
   "appearance": {
-    "theme": 1,         // 1=浅色 2=深色
-    "barHeight": 30     // 28-40
+    "theme": 1,          // 1=浅色 2=深色
+    "translucency": 1,   // 0=极透 1=通透 2=均衡 3=厚重 4=不透明
+    "barHeight": 30,     // 28-40
+    "fontFamily": "",    // 空或 "HarmonyOS Sans SC" 使用内置字体，其余为系统字体名
+    "fontSizePixels": 13 // 11-16（WPF DIP）
   },
   "widgets": [
     { "id": "clock", "enabled": true, "order": 0, "options": {} }
@@ -93,7 +97,7 @@ dotnet run --project MyTopBar
     },
     "hitokoto": { "enabled": true, "intervalMinutes": 30 }
   },
-  "metrics": { "intervalMs": 1000, "useIecUnits": true }
+  "metrics": { "intervalMs": 1000 }
 }
 ```
 
@@ -152,13 +156,13 @@ GET https://{ApiHost}/weather/v1/daily/{lat}/{lon}?localTime=true&lang=zh&days=3
 
 所有周期性刷新走单个 `GlobalTickService`（250ms `DispatcherTimer`），各 DataService 按自己的间隔订阅，无订阅者时自动停。只有启动时和点「应用并测试」才真正发网络请求。
 
-### 毛玻璃
+### 亚克力毛玻璃
 
-```csharp
-SetWindowCompositionAttribute(hwnd,
-    Attribute = WCA_ACCENT_POLICY (19),
-    AccentState = ACCENT_ENABLE_BLURBEHIND (3))
-```
+顶栏（`MainWindow`）、7 个弹窗（`PopupWindow`）与设置窗口（`SettingsWindow`）统一采用 `FluentWpfCore` 的 `WindowMaterial`（`MaterialMode="Acrylic"`、`UseWindowComposition="True"`），由 `ThemeService` 根据明暗主题与 5 档通透感统一同步 `IsDarkMode` 和 `CompositonColor`。走 `UseWindowComposition` 而非 Win11 原生 `SystemBackdrop`，是为了让带 `WS_EX_NOACTIVATE` 的非激活窗口持久保持通透，避免失焦退化成不透明灰块。
+
+### 字体与高分屏
+
+内置 `HarmonyOS Sans SC` 五档字重通过 `FontService` 以双参数 `new FontFamily(new Uri("pack://application:,,,/"), "./Assets/Fonts/#HarmonyOS Sans SC")` 加载（WPF 单参数 `FontFamily(string)` 不解析 `pack://` URI，会静默回退到系统默认字体），写入 `Application.Resources["AppFont"]` 供界面通过 `DynamicResource` 实时切换；应用清单声明 `PerMonitorV2` DPI 感知，字号直接使用 WPF DIP 由系统按显示器缩放高清光栅化。
 
 ### 前台窗口追踪
 
@@ -172,7 +176,7 @@ SetWindowCompositionAttribute(hwnd,
 
 ## 已知限制
 
-- **毛玻璃**：`ACCENT_ENABLE_BLURBEHIND` 在 Win11 已标记不推荐，未来系统版本可能失效
+- **亚克力合成**：为兼容 `WS_EX_NOACTIVATE` 非激活窗口，`FluentWpfCore` 启用了 `UseWindowComposition`（底层走 `SetWindowCompositionAttribute`），该未公开接口在未来系统版本中存在变动风险
 - **歌词匹配**：优先网易云（非公开接口，随时可能失效），回退 LRCLIB。纯音乐可能匹配不到，只有纯文本歌词时显示首行
 - **播放控制**：走 SMTC，各播放器支持程度不一。不支持跳转的播放器（如网易云）拖进度条会被拉回真实位置
 - **单显示器**：未做多屏独立配置
@@ -184,9 +188,9 @@ SetWindowCompositionAttribute(hwnd,
 ```
 MyTopBar/
 ├── Assets/          字体与矢量图标
-├── Infrastructure/  AppBarController、日志、路径、Win32 P/Invoke、毛玻璃
+├── Infrastructure/  AppBarController、日志、路径、Win32 P/Invoke
 ├── Models/          数据模型与配置结构
-├── Services/        前台窗口、音频、电源、系统指标、主题、配置、媒体会话
+├── Services/        前台窗口、音频、电源、系统指标、主题、字体、配置、媒体会话
 │   ├── Lyrics/      LRC 解析与磁盘缓存
 │   └── Media/       SMTC 会话与播放控制
 ├── ViewModels/      主视图模型与各弹窗视图模型
@@ -201,6 +205,7 @@ docs/                README 截图
 | 包 | 用途 |
 |---|---|
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | `[ObservableProperty]` / `[RelayCommand]` |
+| [FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) | 亚克力毛玻璃与窗口圆角 |
 | [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | 依赖注入 |
 | [NAudio](https://github.com/naudio/NAudio) | CoreAudio 音量控制 |
 

@@ -218,9 +218,13 @@ namespace MyTopBar.Infrastructure.Interop
 
         public const int WCA_ACCENT_POLICY = 19;
 
+        public const int ACCENT_DISABLED = 0;
         public const int ACCENT_NORMAL = 1;
         public const int ACCENT_ENABLE_BLURBEHIND = 3;
         public const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+
+        /// <summary>启用 AccentPolicy.GradientColor 染色层（对齐 FluentWpfCore 的 UseWindowComposition）。</summary>
+        public const int ACCENT_FLAG_ENABLE_GRADIENT = 2;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct AccentPolicy
@@ -242,14 +246,56 @@ namespace MyTopBar.Infrastructure.Interop
         [DllImport("user32.dll", PreserveSig = true)]
         public static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
 
+        /// <summary>将 ARGB 颜色打包为 AccentPolicy 所需的 AABBGGRR 整型。</summary>
+        public static int ToAbgr(byte a, byte r, byte g, byte b)
+            => (a << 24) | (b << 16) | (g << 8) | r;
+
         /// <summary>
-        /// 应用毛玻璃（ACCENT_ENABLE_BLURBEHIND）。
-        ///
-        /// 只做高斯模糊，不加噪点、不叠调色，背景纹理仍然可见。
-        /// 与 ACRYLICBLURBEHIND 的区别就在这里——后者会额外叠一层色调，
-        /// 观感更像磨砂塑料而不是玻璃。
-        ///
-        /// 返回 true 表示 API 调用成功。
+        /// 应用 Acrylic 亚克力毛玻璃（ACCENT_ENABLE_ACRYLICBLURBEHIND），
+        /// 对齐 FluentWpfCore 的 UseWindowComposition 机制：
+        ///   - 由 DWM 合成器原生完成高斯模糊 + 半透明基底混合，文字抗锯齿边缘更平滑
+        ///   - 窗口失焦或带 WS_EX_NOACTIVATE 时仍保持半透明，不会像 Mica 那样变灰
+        ///   - 兼容 Windows 10 1809+ 与 Windows 11（包括普通边框窗口与无边框顶栏）
+        /// </summary>
+        public static bool ApplyAcrylic(IntPtr hwnd, int abgrColor)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var accent = new AccentPolicy
+            {
+                AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND,
+                AccentFlags = ACCENT_FLAG_ENABLE_GRADIENT,
+                GradientColor = abgrColor,
+            };
+
+            int size = Marshal.SizeOf<AccentPolicy>();
+            IntPtr buffer = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(accent, buffer, false);
+                var data = new WindowCompositionAttributeData
+                {
+                    Attribute = WCA_ACCENT_POLICY,
+                    Data = buffer,
+                    SizeOfData = size,
+                };
+                return SetWindowCompositionAttribute(hwnd, ref data) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        /// <summary>
+        /// 应用旧版毛玻璃（ACCENT_ENABLE_BLURBEHIND），作为极端环境回退。
         /// </summary>
         public static bool ApplyBlurBehind(IntPtr hwnd)
         {
@@ -319,6 +365,22 @@ namespace MyTopBar.Infrastructure.Interop
                 Marshal.FreeHGlobal(buffer);
             }
         }
+
+        #endregion
+
+        #region 屏幕 DPI（gdi32，用于无窗口时的缩放兜底）
+
+        /// <summary>LOGPIXELSX：GetDeviceCaps 的索引，返回水平 DPI。</summary>
+        public const int LOGPIXELSX = 88;
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [DllImport("gdi32.dll")]
+        public static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
 
         #endregion
 

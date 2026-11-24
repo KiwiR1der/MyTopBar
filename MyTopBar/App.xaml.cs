@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interfaces;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 using MyTopBar.Services.Media;
 using MyTopBar.ViewModels;
@@ -64,7 +63,47 @@ namespace MyTopBar
             RegisterGlobalExceptionHandlers();
             AppLog.Info($"MyTopBar 启动 (pid={Environment.ProcessId})");
 
+            // 应用用户选择的字体、字号与主题材质。必须早于任何窗口创建，
+            // 否则首帧会用默认值渲染，随后再闪一下切换。
+            ApplyFontSettings();
+            ApplyThemeSettings();
+
             base.OnStartup(e);
+        }
+
+        /// <summary>从配置恢复主题、背景材质与通透感。</summary>
+        private void ApplyThemeSettings()
+        {
+            try
+            {
+                ThemeService theme = Services.GetRequiredService<ThemeService>();
+                Models.Settings.AppearanceSettings appearance =
+                    Services.GetRequiredService<SettingsService>().Current.Appearance;
+
+                theme.Apply(appearance.Theme, appearance.Translucency);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("应用主题材质设置失败", ex);
+            }
+        }
+
+        /// <summary>从配置恢复字体与字号，写入全局资源供 DynamicResource 取用。</summary>
+        private void ApplyFontSettings()
+        {
+            try
+            {
+                FontService fonts = Services.GetRequiredService<FontService>();
+                Models.Settings.AppearanceSettings appearance =
+                    Services.GetRequiredService<SettingsService>().Current.Appearance;
+
+                fonts.Apply(appearance.FontFamily, appearance.FontSizePixels);
+            }
+            catch (Exception ex)
+            {
+                // 字体问题不该阻止启动，回退到内置字体即可。
+                AppLog.Error("应用字体设置失败，使用内置字体", ex);
+            }
         }
 
         /// <summary>
@@ -128,6 +167,7 @@ namespace MyTopBar
 
             services.AddSingleton<SettingsService>();
             services.AddSingleton<ThemeService>();
+            services.AddSingleton<FontService>();
             services.AddSingleton<IForegroundWindowService, ForegroundWindowService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<PowerService>();

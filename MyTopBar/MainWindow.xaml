@@ -1,94 +1,93 @@
-<Window
-    AllowsTransparency="False"
-    Background="Transparent"
-    FontFamily="{StaticResource AppFont}"
-    Height="30"
-    ResizeMode="NoResize"
-    ShowActivated="False"
-    ShowInTaskbar="False"
-    SnapsToDevicePixels="True"
-    TextOptions.TextFormattingMode="Ideal"
-    TextOptions.TextRenderingMode="ClearType"
-    Title="MyTopBar"
-    Topmost="True"
-    UseLayoutRounding="True"
-    WindowStyle="None"
-    mc:Ignorable="d"
-    x:Class="MyTopBar.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="clr-namespace:MyTopBar"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:views="clr-namespace:MyTopBar.Views"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Window x:Class="MyTopBar.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:fluent="https://github.com/TwilightLemon/FluentWpfCore"
+        xmlns:local="clr-namespace:MyTopBar"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:MyTopBar.Views"
+        Title="MyTopBar"
+        Height="30"
+        fluent:DwmAnimation.EnableDwmAnimation="True"
+        fluent:WindowMaterial.WindowCorner="DoNotRound"
+        Background="Transparent"
+        FontFamily="{DynamicResource AppFont}"
+        ResizeMode="NoResize"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        SnapsToDevicePixels="True"
+        Topmost="True"
+        WindowStyle="None"
+        mc:Ignorable="d">
 
-    <!--
-        材质固定为毛玻璃（ACCENT_ENABLE_BLURBEHIND），不再可切换。
-        由 MainWindow.ApplyBlurMaterial 直接调用 SetWindowCompositionAttribute 实现，
-        不再经过 FluentWpfCore 的 WindowMaterial 附加属性。
+    <Window.Resources>
+        <WindowChrome x:Key="BarWindowChrome"
+                      CaptionHeight="0"
+                      CornerRadius="0"
+                      GlassFrameThickness="-1"
+                      ResizeBorderThickness="0" />
+    </Window.Resources>
 
-        本层必须完全透明，否则 WPF 自己的背景会把毛玻璃盖住。
-        另外 CompositionTarget.BackgroundColor 也必须在 SourceInitialized
-        和 Loaded 两个时机各设一次（见 MainWindow.xaml.cs）。
-    -->
+    <fluent:WindowMaterial.Material>
+        <fluent:WindowMaterial x:Name="windowMaterial"
+                               MaterialMode="Acrylic"
+                               UseWindowComposition="True"
+                               WindowChromeEx="{StaticResource BarWindowChrome}" />
+    </fluent:WindowMaterial.Material>
 
-    <Grid Background="Transparent" x:Name="RootGrid">
+    <Grid x:Name="RootGrid" Background="Transparent">
         <!--
             IsSharedSizeScope + 两列同用 SharedSizeGroup：
             左右两列都按 Auto 取内容宽度，但会被强制成**二者中较大的那个**。
             这样既保证内容不被裁掉（原来固定 320px，右区实测要 ~490px），
             又让中区在屏幕上真正居中（若左右宽度不等，中区会偏到一侧）。
         -->
-        <Grid Grid.IsSharedSizeScope="True" Margin="12,0">
+        <Grid Margin="12,0" Grid.IsSharedSizeScope="True">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition SharedSizeGroup="BarSide" Width="Auto" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="BarSide" />
                 <!--  MinWidth 放在列上才有效；放在子元素上不会让 * 列保留空间  -->
-                <ColumnDefinition MinWidth="160" Width="*" />
-                <ColumnDefinition SharedSizeGroup="BarSide" Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="160" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="BarSide" />
             </Grid.ColumnDefinitions>
 
             <!--  左区：Apple 菜单 + 当前活动应用  -->
-            <StackPanel
-                Grid.Column="0"
-                HorizontalAlignment="Left"
-                Orientation="Horizontal"
-                VerticalAlignment="Center">
-                <Button
-                    Click="AppleButton_Click"
-                    Style="{StaticResource AppleMenuButton}"
-                    ToolTip="MyTopBar 菜单"
-                    x:Name="AppleButton">
+            <StackPanel Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                <Button x:Name="AppleButton"
+                        Click="AppleButton_Click"
+                        Style="{StaticResource AppleMenuButton}"
+                        ToolTip="MyTopBar 菜单">
                     <!--
                         Apple 徽标：与其他图标同样 14x14、垂直居中。
-
+                        
                         用 Path 而不是 Image，理由有两条：
                         1. 颜色要跟随主题。Fill 绑定按钮自身的 Foreground，
-                           主题切换时 DynamicResource 重新解析，颜色自动更新；
-                           若用 DrawingImage + Image，图片会被 Freeze，
-                           主题切换后颜色不再跟随（之前黑色不随主题变就是这个原因）。
+                        主题切换时 DynamicResource 重新解析，颜色自动更新；
+                        若用 DrawingImage + Image，图片会被 Freeze，
+                        主题切换后颜色不再跟随（之前黑色不随主题变就是这个原因）。
                         2. 尺寸要用 LayoutTransform 控制。原始路径的坐标系是上下
-                           颠倒的（叶子在 Y 689..938，位于主体的下方），必须
-                           ScaleY=-1 翻正。LayoutTransform 参与布局测量，
-                           Stretch=Uniform 才能正确算出 14x14 的包围盒。
+                        颠倒的（叶子在 Y 689..938，位于主体的下方），必须
+                        ScaleY=-1 翻正。LayoutTransform 参与布局测量，
+                        Stretch=Uniform 才能正确算出 14x14 的包围盒。
                     -->
-                    <Path
-                        Data="{StaticResource Apple}"
-                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                        Height="14"
-                        Stretch="Uniform"
-                        Width="14">
+                    <Path Width="14"
+                          Height="14"
+                          Data="{StaticResource Apple}"
+                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          Stretch="Uniform">
                         <Path.LayoutTransform>
                             <ScaleTransform ScaleX="1" ScaleY="-1" />
                         </Path.LayoutTransform>
                     </Path>
                 </Button>
 
-                <TextBlock
-                    Margin="2,0,0,0"
-                    MaxWidth="240"
-                    Style="{StaticResource BarText}"
-                    Text="{Binding CurrentAppName}"
-                    ToolTip="{Binding CurrentWindowTitle}" />
+                <TextBlock MaxWidth="240"
+                           Margin="2,0,0,0"
+                           Style="{StaticResource BarText}"
+                           Text="{Binding CurrentAppName}"
+                           ToolTip="{Binding CurrentWindowTitle}" />
 
             </StackPanel>
 
@@ -97,22 +96,20 @@
                 实际同屏只有一个（歌词与一言互斥，见 MainViewModel.RefreshCenterWidget）。
                 最小宽度写在列定义上（MinWidth=160），屏幕极窄时优先保住中区可读性。
             -->
-            <StackPanel
-                Grid.Column="1"
-                HorizontalAlignment="Center"
-                Orientation="Horizontal"
-                VerticalAlignment="Center"
-                x:Name="CenterPanel">
+            <StackPanel x:Name="CenterPanel"
+                        Grid.Column="1"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
                 <!--
                     点击歌词组件弹出媒体控制浮窗。
                     用 PreviewMouseLeftButtonUp 而不是 Click：中区是模板化内容，
                     没有按钮可挂，只能在容器上拦。
                 -->
-                <ItemsControl
-                    ItemTemplateSelector="{x:Null}"
-                    ItemsSource="{Binding CenterWidgets}"
-                    PreviewMouseLeftButtonUp="OnCenterItemsClick"
-                    x:Name="CenterItems">
+                <ItemsControl x:Name="CenterItems"
+                              ItemTemplateSelector="{x:Null}"
+                              ItemsSource="{Binding CenterWidgets}"
+                              PreviewMouseLeftButtonUp="OnCenterItemsClick">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
@@ -128,23 +125,21 @@
             </StackPanel>
 
             <!--  右区：音量 + CPU / 内存 / 网络  -->
-            <StackPanel
-                Grid.Column="2"
-                HorizontalAlignment="Right"
-                Orientation="Horizontal"
-                VerticalAlignment="Center"
-                x:Name="RightPanel">
+            <StackPanel x:Name="RightPanel"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
                 <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Separator Grid.Column="0" Style="{StaticResource AppleMenuSeparator}" />
-                    <ItemsControl
-                        Grid.Column="1"
-                        ItemsSource="{Binding RightWidgets}"
-                        MouseLeftButtonUp="OnRightItemsClick"
-                        x:Name="RightItems">
+                    <ItemsControl x:Name="RightItems"
+                                  Grid.Column="1"
+                                  ItemsSource="{Binding RightWidgets}"
+                                  MouseLeftButtonUp="OnRightItemsClick">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
@@ -165,19 +160,15 @@
                     不再用 IconsRC.xaml 里的单色 PathGeometry —— 单色剪影
                     在毛玻璃上辨识度低，也和旁边几个彩色图标不搭。
                 -->
-                <Button
-                    Click="AudioButton_Click"
-                    Style="{StaticResource AppleMenuButton}"
-                    ToolTip="点击打开音量控制"
-                    x:Name="AudioButton">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Image
-                            Source="{Binding VolumeIcon, Converter={StaticResource GaugeIconConverter}}"
-                            Style="{StaticResource WidgetIcon}" />
-                        <TextBlock
-                            Margin="4,0,0,0"
-                            Style="{StaticResource BarSecondaryText}"
-                            Text="{Binding Volume, StringFormat={}{0:P0}}" />
+                <Button x:Name="AudioButton"
+                        Click="AudioButton_Click"
+                        Style="{StaticResource AppleMenuButton}"
+                        ToolTip="点击打开音量控制">
+                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                        <Image Source="{Binding VolumeIcon, Converter={StaticResource GaugeIconConverter}}" Style="{StaticResource WidgetIcon}" />
+                        <TextBlock Margin="4,0,0,0"
+                                   Style="{StaticResource BarSecondaryText}"
+                                   Text="{Binding Volume, StringFormat={}{0:P0}}" />
                     </StackPanel>
                 </Button>
 

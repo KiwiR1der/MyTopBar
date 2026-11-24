@@ -48,7 +48,7 @@
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="40" />
             <Setter Property="FontSize" Value="16" />
-            <Setter Property="Background" Value="{DynamicResource PopupGlassBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceTintBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -83,7 +83,7 @@
             <!--  封面：无图时露出占位底色  -->
             <Border Width="56"
                     Height="56"
-                    Background="{DynamicResource PopupGlassBrush}"
+                    Background="{DynamicResource SurfaceTintBrush}"
                     BorderBrush="{DynamicResource InputBorderBrush}"
                     BorderThickness="1"
                     ClipToBounds="True"
@@ -114,7 +114,7 @@
             <StackPanel Grid.Column="1"
                         Margin="10,0,0,0"
                         VerticalAlignment="Center">
-                <TextBlock FontFamily="{StaticResource AppFont}"
+                <TextBlock FontFamily="{DynamicResource AppFont}"
                            FontSize="13"
                            FontWeight="{StaticResource FontWeightEmphasis}"
                            Foreground="{DynamicResource MenuForegroundBrush}"
@@ -122,13 +122,13 @@
                            TextTrimming="CharacterEllipsis"
                            ToolTip="{Binding Title}" />
                 <TextBlock Margin="0,3,0,0"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="12"
                            Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                            Text="{Binding Artist}"
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Margin="0,1,0,0"
-                           FontFamily="{StaticResource AppFont}"
+                           FontFamily="{DynamicResource AppFont}"
                            FontSize="11"
                            Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                            Opacity="0.75"
@@ -170,7 +170,7 @@
 
             <TextBlock Margin="0,2,0,0"
                        HorizontalAlignment="Right"
-                       FontFamily="{StaticResource AppFont}"
+                       FontFamily="{DynamicResource AppFont}"
                        FontSize="11"
                        Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                        Text="{Binding ProgressText}" />
@@ -198,7 +198,7 @@
         <!--  无播放时的提示  -->
         <TextBlock Margin="0,8,0,0"
                    HorizontalAlignment="Center"
-                   FontFamily="{StaticResource AppFont}"
+                   FontFamily="{DynamicResource AppFont}"
                    FontSize="12"
                    Foreground="{DynamicResource MenuSecondaryForegroundBrush}"
                    Text="当前没有正在播放的媒体">

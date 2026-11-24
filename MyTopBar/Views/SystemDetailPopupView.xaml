@@ -13,13 +13,13 @@
 
         <!--  标题 + 大数值  -->
         <TextBlock Margin="0,0,0,10"
-                   FontFamily="{StaticResource AppFont}"
+                   FontFamily="{DynamicResource AppFont}"
                    FontWeight="{StaticResource FontWeightEmphasis}"
                    FontSize="14"
                    Foreground="{DynamicResource MenuForegroundBrush}"
                    Text="{Binding Title}" />
 
-        <TextBlock FontFamily="{StaticResource AppFont}"
+        <TextBlock FontFamily="{DynamicResource AppFont}"
                    FontSize="44"
                    FontWeight="{StaticResource FontWeightBody}"
                    Foreground="{DynamicResource MenuForegroundBrush}"

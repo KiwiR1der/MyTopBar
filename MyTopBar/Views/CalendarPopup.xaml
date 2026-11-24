@@ -13,7 +13,7 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock VerticalAlignment="Center"
-                       FontFamily="{StaticResource AppFont}"
+                       FontFamily="{DynamicResource AppFont}"
                        FontWeight="{StaticResource FontWeightEmphasis}"
                        FontSize="14"
                        Foreground="{DynamicResource MenuForegroundBrush}"
@@ -91,7 +91,7 @@
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsToday}" Value="True">
                                             <Setter Property="Foreground" Value="{DynamicResource CalendarTodayForegroundBrush}" />
-                                            <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+                                            <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
                                             <Setter Property="FontWeight" Value="{StaticResource FontWeightHeading}" />
                                         </DataTrigger>
                                     </Style.Triggers>

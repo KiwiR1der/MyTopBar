@@ -2,9 +2,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Shell;
+using FluentWpfCore.AttachedProperties;
+using FluentWpfCore.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using MyTopBar.Infrastructure.Interop;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Services;
 
 namespace MyTopBar.Views
@@ -39,6 +41,7 @@ namespace MyTopBar.Views
     public class PopupWindow : Window
     {
         private readonly ThemeService _theme;
+        private readonly WindowMaterial _windowMaterial;
 
         /// <summary>打开期间的外部点击监视器，收起时立刻摘掉。</summary>
         private readonly OutsideClickMonitor _outsideClick;
@@ -98,39 +101,53 @@ namespace MyTopBar.Views
             SnapsToDevicePixels = true;
             UseLayoutRounding = true;
 
-            if (Application.Current.Resources["AppFont"] is FontFamily font)
-            {
-                FontFamily = font;
-            }
+            SetResourceReference(FontFamilyProperty, "AppFont");
 
             ContentHost = new Border
             {
                 Padding = padding,
                 CornerRadius = new CornerRadius(cornerRadius),
                 MinWidth = minWidth,
-                Background = (Brush)Application.Current.Resources["PopupGlassBrush"],
-                BorderBrush = (Brush)Application.Current.Resources["MenuBorderBrush"],
                 BorderThickness = new Thickness(1),
                 Child = content
             };
+            ContentHost.SetResourceReference(Border.BackgroundProperty, "PopupGlassBrush");
+            ContentHost.SetResourceReference(Border.BorderBrushProperty, "MenuBorderBrush");
 
             Content = new Grid { Background = Brushes.Transparent, Children = { ContentHost } };
 
             _outsideClick = new OutsideClickMonitor(this, Collapse);
 
+            WindowMaterial.SetWindowCorner(this, MaterialApis.WindowCorner.Round);
+            _windowMaterial = new WindowMaterial
+            {
+                MaterialMode = MaterialType.Acrylic,
+                UseWindowComposition = true,
+                WindowChromeEx = new WindowChrome
+                {
+                    CaptionHeight = 0,
+                    CornerRadius = new CornerRadius(cornerRadius),
+                    GlassFrameThickness = new Thickness(-1),
+                    ResizeBorderThickness = new Thickness(0)
+                }
+            };
+            SyncWindowMaterial();
+            WindowMaterial.SetMaterial(this, _windowMaterial);
+
             SourceInitialized += OnSourceInitialized;
-            Loaded += OnLoaded;
             Closed += OnClosed;
+            _theme.BackdropChanged += OnBackdropChanged;
         }
+
+        private void OnBackdropChanged(object? sender, EventArgs e)
+            => SyncWindowMaterial();
+
+        private void SyncWindowMaterial()
+            => _theme.SyncWindowMaterial(_windowMaterial, isBar: false);
 
         private void OnSourceInitialized(object? sender, EventArgs e)
         {
             IntPtr handle = new WindowInteropHelper(this).Handle;
-
-            if (PresentationSource.FromVisual(this) is HwndSource source && source.CompositionTarget is not null)
-            {
-                source.CompositionTarget.BackgroundColor = Colors.Transparent;
-            }
 
             /*
              * 关键：给弹窗自己加 WS_EX_NOACTIVATE。
@@ -140,14 +157,6 @@ namespace MyTopBar.Views
              * 不会再穿透到菜单下方的程序。
              */
             NativeMethods.MakeNonActivating(handle);
-
-            GlassEffect.Apply(handle, _theme.IsDark, roundCorners: true);
-        }
-
-        private void OnLoaded(object sender, RoutedEventArgs e)
-        {
-            GlassEffect.SetTransparentClientArea(this);
-            InvalidateVisual();
         }
 
         /// <summary>
@@ -206,8 +215,8 @@ namespace MyTopBar.Views
         private void OnClosed(object? sender, EventArgs e)
         {
             SourceInitialized -= OnSourceInitialized;
-            Loaded -= OnLoaded;
             Closed -= OnClosed;
+            _theme.BackdropChanged -= OnBackdropChanged;
 
             _outsideClick.Dispose();
             RestoreForeground();

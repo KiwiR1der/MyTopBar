@@ -40,10 +40,12 @@ namespace MyTopBar.Controls
 
             // 歌词行切换很快（最短 1-2 秒一行），动画要短，
             // 否则上一行动画没播完下一行又来了。
+            // 使用 FillBehavior.Stop + 基准 Opacity=1.0：动画结束后自动释放时钟，
+            // 避免控件长期挂着 Opacity 动画轨道影响文字光栅化路径。
+            textBlock.Opacity = 1.0;
             var animation = new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(150))
             {
-                // 动画结束后保持终值；BeginAnimation 会处理掉旧动画，不会堆积。
-                FillBehavior = FillBehavior.HoldEnd
+                FillBehavior = FillBehavior.Stop
             };
             textBlock.BeginAnimation(OpacityProperty, animation);
         }

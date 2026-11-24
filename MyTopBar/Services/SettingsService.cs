@@ -2,7 +2,6 @@ using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using MyTopBar.Infrastructure.Common;
-using MyTopBar.Infrastructure.Material;
 using MyTopBar.Models.Settings;
 
 namespace MyTopBar.Services
@@ -201,6 +200,12 @@ namespace MyTopBar.Services
             if (settings.Appearance.Theme == ThemeMode.System)
             {
                 settings.Appearance.Theme = ThemeMode.Light;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(settings.Appearance.Translucency))
+            {
+                settings.Appearance.Translucency = BackdropTranslucency.Clear;
                 changed = true;
             }
 
