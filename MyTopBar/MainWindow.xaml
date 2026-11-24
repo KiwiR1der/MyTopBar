@@ -13,6 +13,7 @@
         fluent:WindowMaterial.WindowCorner="DoNotRound"
         Background="Transparent"
         FontFamily="{DynamicResource AppFont}"
+        FontWeight="{DynamicResource AppFontWeight}"
         ResizeMode="NoResize"
         ShowActivated="False"
         ShowInTaskbar="False"

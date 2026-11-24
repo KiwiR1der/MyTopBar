@@ -9,6 +9,7 @@
         fluent:WindowMaterial.WindowCorner="Round"
         AllowsTransparency="False"
         Background="Transparent"
+        FontWeight="{DynamicResource AppFontWeight}"
         Foreground="{DynamicResource MenuForegroundBrush}"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True"
@@ -184,7 +185,7 @@
                                   ToolTip="内置字体，或系统已安装的任意字体" />
                     </StackPanel>
 
-                    <StackPanel Margin="0,0,0,16" Orientation="Horizontal">
+                    <StackPanel Margin="0,0,0,8" Orientation="Horizontal">
                         <TextBlock Style="{StaticResource FieldLabel}" Text="字号" />
                         <ComboBox Width="120"
                                   ItemsSource="{Binding FontSizes}"
@@ -193,6 +194,14 @@
                         <TextBlock Margin="10,0,0,0"
                                    Style="{StaticResource HintText}"
                                    Text="{Binding FontScaleHint}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,16" Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="字重" />
+                        <ComboBox Width="180"
+                                  ItemsSource="{Binding FontWeightOptions}"
+                                  SelectedItem="{Binding SelectedFontWeight, Mode=TwoWay}"
+                                  Style="{StaticResource SettingsComboBox}" />
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>

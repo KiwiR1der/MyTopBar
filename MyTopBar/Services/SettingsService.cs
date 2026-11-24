@@ -209,6 +209,12 @@ namespace MyTopBar.Services
                 changed = true;
             }
 
+            if (!Enum.IsDefined(settings.Appearance.FontWeight))
+            {
+                settings.Appearance.FontWeight = FontWeightPreset.Regular;
+                changed = true;
+            }
+
             return settings;
         }
 

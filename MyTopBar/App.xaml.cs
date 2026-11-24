@@ -97,7 +97,7 @@ namespace MyTopBar
                 Models.Settings.AppearanceSettings appearance =
                     Services.GetRequiredService<SettingsService>().Current.Appearance;
 
-                fonts.Apply(appearance.FontFamily, appearance.FontSizePixels);
+                fonts.Apply(appearance.FontFamily, appearance.FontSizePixels, appearance.FontWeight);
             }
             catch (Exception ex)
             {

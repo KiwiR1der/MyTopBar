@@ -19,6 +19,7 @@
     <sys:Double x:Key="AppFontSize" xmlns:sys="clr-namespace:System;assembly=mscorlib">13</sys:Double>
     <sys:Double x:Key="AppFontSizeSmall" xmlns:sys="clr-namespace:System;assembly=mscorlib">12</sys:Double>
     <FontFamily x:Key="AppFont">pack://application:,,,/Assets/Fonts/#HarmonyOS Sans SC</FontFamily>
+    <FontWeight x:Key="AppFontWeight">Normal</FontWeight>
 
     <!--
         ==========  字重令牌  ==========
@@ -93,6 +94,7 @@
 
     <Style TargetType="Window">
         <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
+        <Setter Property="FontWeight" Value="{DynamicResource AppFontWeight}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="UseLayoutRounding" Value="True" />
     </Style>
@@ -135,6 +137,7 @@
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
         <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
+        <Setter Property="FontWeight" Value="{DynamicResource AppFontWeight}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Template">
             <Setter.Value>

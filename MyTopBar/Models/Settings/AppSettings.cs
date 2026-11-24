@@ -47,6 +47,16 @@ namespace MyTopBar.Models.Settings
         Opaque = 4
     }
 
+    /// <summary>界面正文字重档位（对应内置 HarmonyOS Sans SC 的五档真实字形）。</summary>
+    public enum FontWeightPreset
+    {
+        Light = 0,
+        Regular = 1,
+        Medium = 2,
+        Bold = 3,
+        Black = 4
+    }
+
     /// <summary>外观设置。</summary>
     public sealed class AppearanceSettings
     {
@@ -68,10 +78,12 @@ namespace MyTopBar.Models.Settings
         public string FontFamily { get; set; } = string.Empty;
 
         /// <summary>
-        /// 目标字号（物理像素）。运行时按「该值 / 当前 DPI 缩放」换算成 DIP，
-        /// 保证字形栅格落在整像素上。默认 13，接近系统 UI 的 Segoe UI 9pt。
+        /// 主字号（WPF DIP），默认 13。
         /// </summary>
         public double FontSizePixels { get; set; } = 13;
+
+        /// <summary>顶栏与界面正文字重，默认常规（Regular / 400）。</summary>
+        public FontWeightPreset FontWeight { get; set; } = FontWeightPreset.Regular;
     }
 
     /// <summary>

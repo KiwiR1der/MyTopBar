@@ -102,6 +102,7 @@ namespace MyTopBar.Views
             UseLayoutRounding = true;
 
             SetResourceReference(FontFamilyProperty, "AppFont");
+            SetResourceReference(FontWeightProperty, "AppFontWeight");
 
             ContentHost = new Border
             {

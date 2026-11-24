@@ -2,18 +2,20 @@ using System.Windows;
 using System.Windows.Media;
 using MyTopBar.Infrastructure.Common;
 using MyTopBar.Infrastructure.Interop;
+using MyTopBar.Models.Settings;
 
 namespace MyTopBar.Services
 {
     /// <summary>
-    /// 字体选择与字号发布。
+    /// 字体选择、字号与字重发布。
     ///
-    /// 两个职责：
+    /// 三个职责：
     ///   1. 维护当前字体（内置 HarmonyOS Sans SC，或用户选择的系统字体），
     ///      写入 Application.Resources["AppFont"]，界面用 DynamicResource 自动跟随。
     ///   2. 将用户选择的字号（WPF DIP）发布到全局资源 AppFontSize / AppFontSizeSmall。
     ///      WPF 会按系统 DPI 自动将 DIP 映射到对应物理像素，高分屏（125%/150%/200%）
     ///      保留完整 DIP 字号即可获得更细腻的字形采样，无需反向除以缩放压小字号。
+    ///   3. 将用户选择的正文字重发布到全局资源 AppFontWeight。
     /// </summary>
     public sealed class FontService
     {
@@ -32,14 +34,17 @@ namespace MyTopBar.Services
         /// <summary>当前生效的主字号（DIP）。</summary>
         public double CurrentFontSize { get; private set; } = DefaultFontSizeDip;
 
-        /// <summary>字体或字号变化时触发。</summary>
+        /// <summary>当前生效的正文字重。</summary>
+        public FontWeightPreset CurrentFontWeight { get; private set; } = FontWeightPreset.Regular;
+
+        /// <summary>字体、字号或字重变化时触发。</summary>
         public event EventHandler? FontChanged;
 
         /// <summary>
-        /// 应用字体与字号。传空或 <see cref="BuiltinFontName"/> 时使用内置字体，
-        /// 否则按系统已安装的字体名解析；<paramref name="fontSizeDip"/> 为空时保持当前字号。
+        /// 应用字体、字号与字重。传空或 <see cref="BuiltinFontName"/> 时使用内置字体，
+        /// 否则按系统已安装的字体名解析；<paramref name="fontSizeDip"/> / <paramref name="fontWeight"/> 为空时保持当前值。
         /// </summary>
-        public void Apply(string? fontName, double? fontSizeDip = null)
+        public void Apply(string? fontName, double? fontSizeDip = null, FontWeightPreset? fontWeight = null)
         {
             string name = string.IsNullOrWhiteSpace(fontName) ? BuiltinFontName : fontName.Trim();
 
@@ -69,8 +74,13 @@ namespace MyTopBar.Services
                 CurrentFontSize = Math.Clamp(Math.Round(size, 2), 10.0, 24.0);
             }
 
+            if (fontWeight is { } weight && Enum.IsDefined(weight))
+            {
+                CurrentFontWeight = weight;
+            }
+
             CurrentFontName = name;
-            Publish(family, CurrentFontSize);
+            Publish(family, CurrentFontSize, CurrentFontWeight);
 
             FontChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -80,20 +90,20 @@ namespace MyTopBar.Services
         /// </summary>
         public void RefreshScale()
         {
-            Publish(CurrentFontName, CurrentFontSize);
+            Publish(CurrentFontName, CurrentFontSize, CurrentFontWeight);
             FontChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private static void Publish(string fontName, double fontSizeDip)
+        private static void Publish(string fontName, double fontSizeDip, FontWeightPreset fontWeight)
         {
             FontFamily family = string.Equals(fontName, BuiltinFontName, StringComparison.OrdinalIgnoreCase)
                 ? BuiltinFont
                 : new FontFamily(fontName);
 
-            Publish(family, fontSizeDip);
+            Publish(family, fontSizeDip, fontWeight);
         }
 
-        private static void Publish(FontFamily family, double fontSizeDip)
+        private static void Publish(FontFamily family, double fontSizeDip, FontWeightPreset fontWeight)
         {
             if (Application.Current is not { } app)
             {
@@ -107,7 +117,18 @@ namespace MyTopBar.Services
             app.Resources["AppFont"] = family;
             app.Resources["AppFontSize"] = baseSize;
             app.Resources["AppFontSizeSmall"] = smallSize;
+            app.Resources["AppFontWeight"] = ToWpfFontWeight(fontWeight);
         }
+
+        public static FontWeight ToWpfFontWeight(FontWeightPreset preset) => preset switch
+        {
+            FontWeightPreset.Light => FontWeights.Light,
+            FontWeightPreset.Regular => FontWeights.Normal,
+            FontWeightPreset.Medium => FontWeights.Medium,
+            FontWeightPreset.Bold => FontWeights.Bold,
+            FontWeightPreset.Black => FontWeights.Black,
+            _ => FontWeights.Normal
+        };
 
         /// <summary>系统已安装的字体名列表（去重排序），供设置界面下拉。内置字体固定第一项。</summary>
         public static IReadOnlyList<string> GetInstalledFontNames()

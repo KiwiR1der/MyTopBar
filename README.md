@@ -83,7 +83,8 @@ dotnet run --project MyTopBar
     "translucency": 1,   // 0=极透 1=通透 2=均衡 3=厚重 4=不透明
     "barHeight": 30,     // 28-40
     "fontFamily": "",    // 空或 "HarmonyOS Sans SC" 使用内置字体，其余为系统字体名
-    "fontSizePixels": 13 // 11-16（WPF DIP）
+    "fontSizePixels": 13,// 11-16（WPF DIP）
+    "fontWeight": 1      // 0=Light 1=Regular 2=Medium 3=Bold 4=Black
   },
   "widgets": [
     { "id": "clock", "enabled": true, "order": 0, "options": {} }

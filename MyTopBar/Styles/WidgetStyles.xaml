@@ -10,7 +10,7 @@
     <Style x:Key="BarText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
-        <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
+        <Setter Property="FontWeight" Value="{DynamicResource AppFontWeight}" />
         <Setter Property="FontSize" Value="{DynamicResource AppFontSize}" />
         <Setter Property="Foreground" Value="{DynamicResource BarForegroundBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -21,7 +21,7 @@
         <Setter Property="Foreground" Value="{DynamicResource BarSecondaryForegroundBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource AppFont}" />
         <Setter Property="FontSize" Value="{DynamicResource AppFontSizeSmall}" />
-        <Setter Property="FontWeight" Value="{StaticResource FontWeightBody}" />
+        <Setter Property="FontWeight" Value="{DynamicResource AppFontWeight}" />
     </Style>
 
     <!--

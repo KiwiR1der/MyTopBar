@@ -121,11 +121,24 @@ namespace MyTopBar.ViewModels
         /// <summary>可选字号（物理像素）。都是整数，避免半像素栅格错位。</summary>
         public IReadOnlyList<double> FontSizes { get; } = [11, 12, 13, 14, 15, 16];
 
+        /// <summary>可选正文字重（对应内置 HarmonyOS Sans SC 的五档真实字形）。</summary>
+        public IReadOnlyList<FontWeightOption> FontWeightOptions { get; } =
+        [
+            new(FontWeightPreset.Light, "细体 (Light)"),
+            new(FontWeightPreset.Regular, "常规 (Regular)"),
+            new(FontWeightPreset.Medium, "中等 (Medium)"),
+            new(FontWeightPreset.Bold, "粗体 (Bold)"),
+            new(FontWeightPreset.Black, "特粗 (Black)")
+        ];
+
         [ObservableProperty]
         private string _selectedFontFamily;
 
         [ObservableProperty]
         private double _selectedFontSize;
+
+        [ObservableProperty]
+        private FontWeightOption _selectedFontWeight;
 
         /// <summary>当前缩放与换算结果的说明，显示在字号旁边。</summary>
         public string FontScaleHint { get; private set; } = string.Empty;
@@ -193,6 +206,9 @@ namespace MyTopBar.ViewModels
 
             double savedPixels = current.Appearance.FontSizePixels;
             _selectedFontSize = FontSizes.Contains(savedPixels) ? savedPixels : 13;
+
+            _selectedFontWeight = FontWeightOptions.FirstOrDefault(w => w.Weight == current.Appearance.FontWeight)
+                ?? FontWeightOptions[1];
 
             UpdateScaleHint();
 
@@ -303,9 +319,23 @@ namespace MyTopBar.ViewModels
             }
 
             _settings.Current.Appearance.FontSizePixels = value;
-            _fonts.Apply(_selectedFontFamily, value);
+            _fonts.Apply(SelectedFontFamily, value, SelectedFontWeight.Weight);
             _settings.Save();
             UpdateScaleHint();
+            SettingsApplied?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>切换正文字重，立即生效并持久化。</summary>
+        partial void OnSelectedFontWeightChanged(FontWeightOption value)
+        {
+            if (_loading || value is null)
+            {
+                return;
+            }
+
+            _settings.Current.Appearance.FontWeight = value.Weight;
+            _fonts.Apply(SelectedFontFamily, SelectedFontSize, value.Weight);
+            _settings.Save();
             SettingsApplied?.Invoke(this, EventArgs.Empty);
         }
 
@@ -712,6 +742,12 @@ namespace MyTopBar.ViewModels
 
     /// <summary>背景通透感下拉项。</summary>
     public sealed record TranslucencyOption(BackdropTranslucency Translucency, string Display)
+    {
+        public override string ToString() => Display;
+    }
+
+    /// <summary>正文字重下拉项。</summary>
+    public sealed record FontWeightOption(FontWeightPreset Weight, string Display)
     {
         public override string ToString() => Display;
     }
