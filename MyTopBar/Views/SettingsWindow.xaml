@@ -5,6 +5,7 @@
         Title="MyTopBar Settings"
         Width="720"
         Height="640"
+        Icon="pack://application:,,,/Assets/Icons/app.ico"
         fluent:WindowMaterial.WindowCorner="Round"
         AllowsTransparency="False"
         Background="Transparent"
@@ -82,12 +83,21 @@
                 BorderThickness="0,0,1,0"
                 Padding="10,14,10,14">
             <StackPanel>
-                <TextBlock Margin="4,0,0,12"
-                           FontFamily="{DynamicResource AppFont}"
-                           FontWeight="{StaticResource FontWeightHeading}"
-                           FontSize="15"
-                           Foreground="{DynamicResource MenuForegroundBrush}"
-                           Text="设置" />
+                <StackPanel Margin="4,0,0,12" Orientation="Horizontal">
+                    <Image Width="18"
+                           Height="18"
+                           Margin="0,0,7,0"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           SnapsToDevicePixels="True"
+                           Source="{StaticResource AppLogo}" />
+                    <TextBlock VerticalAlignment="Center"
+                               FontFamily="{DynamicResource AppFont}"
+                               FontWeight="{StaticResource FontWeightHeading}"
+                               FontSize="15"
+                               Foreground="{DynamicResource MenuForegroundBrush}"
+                               Text="设置" />
+                </StackPanel>
 
                 <RadioButton x:Name="NavAppearance"
                              Content="外观"

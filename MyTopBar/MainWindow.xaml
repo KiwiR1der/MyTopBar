@@ -8,6 +8,7 @@
         xmlns:views="clr-namespace:MyTopBar.Views"
         Title="MyTopBar"
         Height="30"
+        Icon="pack://application:,,,/Assets/Icons/app.ico"
         fluent:DwmAnimation.EnableDwmAnimation="True"
         fluent:WindowMaterial.WindowCorner="DoNotRound"
         Background="Transparent"

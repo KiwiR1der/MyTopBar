@@ -1,10 +1,13 @@
-# MyTopBar
-
-Windows 上的 macOS 风格顶栏。通过 Shell 的 AppBar 协议真正占用桌面工作区，最大化窗口从顶栏下边缘开始。
-
-![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4)
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
-![license](https://img.shields.io/badge/license-MIT-green)
+<div align="center">
+  <img src="MyTopBar/Assets/Icons/app.svg" width="80" height="80" alt="MyTopBar Logo" />
+  <h1>MyTopBar</h1>
+  <p>Windows 上的 macOS 风格顶栏。通过 Shell 的 AppBar 协议真正占用桌面工作区，最大化窗口从顶栏下边缘开始。</p>
+  <p>
+    <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4" alt="platform" />
+    <img src="https://img.shields.io/badge/.NET-8.0-512BD4" alt=".NET" />
+    <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
+  </p>
+</div>
 
 ## 特性
 
