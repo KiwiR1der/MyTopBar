@@ -101,8 +101,8 @@ namespace MyTopBar
             }
             catch (Exception ex)
             {
-                // 字体问题不该阻止启动，回退到内置字体即可。
-                AppLog.Error("应用字体设置失败，使用内置字体", ex);
+                // 字体问题不该阻止启动，回退到系统默认字体即可。
+                AppLog.Error("应用字体设置失败，使用系统默认字体", ex);
             }
         }
 

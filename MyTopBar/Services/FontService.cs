@@ -10,7 +10,7 @@ namespace MyTopBar.Services
     /// 字体选择、字号与字重发布。
     ///
     /// 三个职责：
-    ///   1. 维护当前字体（内置 HarmonyOS Sans SC，或用户选择的系统字体），
+    ///   1. 维护当前字体（跟随系统默认字体，或用户选择的系统已安装字体），
     ///      写入 Application.Resources["AppFont"]，界面用 DynamicResource 自动跟随。
     ///   2. 将用户选择的字号（WPF DIP）发布到全局资源 AppFontSize / AppFontSizeSmall。
     ///      WPF 会按系统 DPI 自动将 DIP 映射到对应物理像素，高分屏（125%/150%/200%）
@@ -19,17 +19,14 @@ namespace MyTopBar.Services
     /// </summary>
     public sealed class FontService
     {
-        /// <summary>内置字体的名称，也作为「使用内置字体」的配置值。</summary>
-        public const string BuiltinFontName = "HarmonyOS Sans SC";
+        /// <summary>「跟随系统默认字体」的显示名（配置中以空字符串表示）。</summary>
+        public const string SystemDefaultFontName = "跟随系统";
 
         /// <summary>默认字号（WPF DIP）。13 DIP 在 100% 下为 13px，150% 下为 19.5px。</summary>
         public const double DefaultFontSizeDip = 13.0;
 
-        private static readonly FontFamily BuiltinFont =
-            new(new Uri("pack://application:,,,/"), "./Assets/Fonts/#HarmonyOS Sans SC");
-
         /// <summary>当前生效的字体名（用于设置界面回显）。</summary>
-        public string CurrentFontName { get; private set; } = BuiltinFontName;
+        public string CurrentFontName { get; private set; } = SystemDefaultFontName;
 
         /// <summary>当前生效的主字号（DIP）。</summary>
         public double CurrentFontSize { get; private set; } = DefaultFontSizeDip;
@@ -41,28 +38,28 @@ namespace MyTopBar.Services
         public event EventHandler? FontChanged;
 
         /// <summary>
-        /// 应用字体、字号与字重。传空或 <see cref="BuiltinFontName"/> 时使用内置字体，
+        /// 应用字体、字号与字重。传空或 <see cref="SystemDefaultFontName"/> 时使用系统默认 UI 字体，
         /// 否则按系统已安装的字体名解析；<paramref name="fontSizeDip"/> / <paramref name="fontWeight"/> 为空时保持当前值。
         /// </summary>
         public void Apply(string? fontName, double? fontSizeDip = null, FontWeightPreset? fontWeight = null)
         {
-            string name = string.IsNullOrWhiteSpace(fontName) ? BuiltinFontName : fontName.Trim();
+            string name = string.IsNullOrWhiteSpace(fontName) ? SystemDefaultFontName : fontName.Trim();
 
             FontFamily family;
-            if (string.Equals(name, BuiltinFontName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(name, SystemDefaultFontName, StringComparison.OrdinalIgnoreCase))
             {
-                family = BuiltinFont;
-                name = BuiltinFontName;
+                family = SystemFonts.MessageFontFamily;
+                name = SystemDefaultFontName;
             }
             else if (!IsInstalled(name))
             {
                 /*
                  * 字体不存在时 WPF 会静默回退到默认字体，用户看不出「没生效」，
-                 * 只会觉得「选了没变化」。这里先校验并回退到内置字体，同时记日志。
+                 * 只会觉得「选了没变化」。这里先校验并回退到系统默认字体，同时记日志。
                  */
-                AppLog.Warn($"字体 {name} 未安装，回退到内置字体");
-                family = BuiltinFont;
-                name = BuiltinFontName;
+                AppLog.Warn($"字体 {name} 未安装，回退到系统默认字体");
+                family = SystemFonts.MessageFontFamily;
+                name = SystemDefaultFontName;
             }
             else
             {
@@ -96,8 +93,8 @@ namespace MyTopBar.Services
 
         private static void Publish(string fontName, double fontSizeDip, FontWeightPreset fontWeight)
         {
-            FontFamily family = string.Equals(fontName, BuiltinFontName, StringComparison.OrdinalIgnoreCase)
-                ? BuiltinFont
+            FontFamily family = string.Equals(fontName, SystemDefaultFontName, StringComparison.OrdinalIgnoreCase)
+                ? SystemFonts.MessageFontFamily
                 : new FontFamily(fontName);
 
             Publish(family, fontSizeDip, fontWeight);
@@ -130,10 +127,10 @@ namespace MyTopBar.Services
             _ => FontWeights.Normal
         };
 
-        /// <summary>系统已安装的字体名列表（去重排序），供设置界面下拉。内置字体固定第一项。</summary>
+        /// <summary>系统已安装的字体名列表（去重排序），供设置界面下拉。「跟随系统」固定第一项。</summary>
         public static IReadOnlyList<string> GetInstalledFontNames()
         {
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { BuiltinFontName };
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { SystemDefaultFontName };
             var rest = new List<string>();
 
             try
@@ -154,7 +151,7 @@ namespace MyTopBar.Services
 
             rest.Sort(StringComparer.CurrentCulture);
 
-            var result = new List<string> { BuiltinFontName };
+            var result = new List<string> { SystemDefaultFontName };
             result.AddRange(rest);
             return result;
         }

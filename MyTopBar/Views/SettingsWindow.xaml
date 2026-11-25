@@ -182,7 +182,7 @@
                                   MaxDropDownHeight="320"
                                   SelectedItem="{Binding SelectedFontFamily, Mode=TwoWay}"
                                   Style="{StaticResource SettingsComboBox}"
-                                  ToolTip="内置字体，或系统已安装的任意字体" />
+                                  ToolTip="跟随系统默认字体，或选择系统已安装的任意字体" />
                     </StackPanel>
 
                     <StackPanel Margin="0,0,0,8" Orientation="Horizontal">

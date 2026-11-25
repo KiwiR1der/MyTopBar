@@ -47,7 +47,7 @@ namespace MyTopBar.Models.Settings
         Opaque = 4
     }
 
-    /// <summary>界面正文字重档位（对应内置 HarmonyOS Sans SC 的五档真实字形）。</summary>
+    /// <summary>界面正文字重档位。</summary>
     public enum FontWeightPreset
     {
         Light = 0,
@@ -72,8 +72,7 @@ namespace MyTopBar.Models.Settings
         public double BarHeight { get; set; } = BarHeightRange.Default;
 
         /// <summary>
-        /// 字体名。空或 "HarmonyOS Sans SC" 表示使用内置字体，
-        /// 其余值为系统已安装的字体名。
+        /// 字体名。空表示跟随系统默认 UI 字体，其余值为系统已安装的字体名。
         /// </summary>
         public string FontFamily { get; set; } = string.Empty;
 

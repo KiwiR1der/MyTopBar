@@ -115,13 +115,13 @@ namespace MyTopBar.ViewModels
 
         // ==========  字体  ==========
 
-        /// <summary>可选字体：内置字体排在首位，其后是系统已安装字体。</summary>
+        /// <summary>可选字体：「跟随系统」排在首位，其后是系统已安装字体。</summary>
         public IReadOnlyList<string> FontFamilies { get; }
 
-        /// <summary>可选字号（物理像素）。都是整数，避免半像素栅格错位。</summary>
+        /// <summary>可选字号（WPF DIP）。</summary>
         public IReadOnlyList<double> FontSizes { get; } = [11, 12, 13, 14, 15, 16];
 
-        /// <summary>可选正文字重（对应内置 HarmonyOS Sans SC 的五档真实字形）。</summary>
+        /// <summary>可选正文字重。</summary>
         public IReadOnlyList<FontWeightOption> FontWeightOptions { get; } =
         [
             new(FontWeightPreset.Light, "细体 (Light)"),
@@ -198,11 +198,11 @@ namespace MyTopBar.ViewModels
             _barHeight = current.Appearance.BarHeight;
             UpdateBackdropHint();
 
-            // 字体：配置为空表示使用内置字体。
+            // 字体：配置为空表示跟随系统默认字体。
             string savedFont = string.IsNullOrWhiteSpace(current.Appearance.FontFamily)
-                ? FontService.BuiltinFontName
+                ? FontService.SystemDefaultFontName
                 : current.Appearance.FontFamily;
-            _selectedFontFamily = FontFamilies.Contains(savedFont) ? savedFont : FontService.BuiltinFontName;
+            _selectedFontFamily = FontFamilies.Contains(savedFont) ? savedFont : FontService.SystemDefaultFontName;
 
             double savedPixels = current.Appearance.FontSizePixels;
             _selectedFontSize = FontSizes.Contains(savedPixels) ? savedPixels : 13;
@@ -301,11 +301,11 @@ namespace MyTopBar.ViewModels
             }
 
             _settings.Current.Appearance.FontFamily =
-                string.Equals(value, FontService.BuiltinFontName, StringComparison.OrdinalIgnoreCase)
+                string.Equals(value, FontService.SystemDefaultFontName, StringComparison.OrdinalIgnoreCase)
                     ? string.Empty
                     : value;
 
-            _fonts.Apply(value, _selectedFontSize);
+            _fonts.Apply(value, SelectedFontSize, SelectedFontWeight.Weight);
             _settings.Save();
             SettingsApplied?.Invoke(this, EventArgs.Empty);
         }

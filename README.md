@@ -13,7 +13,7 @@
 
 - **工作区占位**：注册为 AppBar，最大化窗口不会盖住顶栏
 - **亚克力毛玻璃**：基于 FluentWpfCore 的 Acrylic 合成层，支持浅色 / 深色主题与 5 档通透感即时调节
-- **字体可定制**：内嵌 HarmonyOS Sans SC（5 档字重），支持实时切换任意系统字体与字号
+- **字体可定制**：支持选择系统已安装的任意字体，并实时调整字号与字重
 - **可插拔组件**：中区与右区独立装配，可启停、可拖动排序
 - **不抢焦点**：点击顶栏不会让当前窗口失焦
 - **便携**：配置存在程序目录 `settings.json`，不写 `%AppData%`
@@ -82,7 +82,7 @@ dotnet run --project MyTopBar
     "theme": 1,          // 1=浅色 2=深色
     "translucency": 1,   // 0=极透 1=通透 2=均衡 3=厚重 4=不透明
     "barHeight": 30,     // 28-40
-    "fontFamily": "",    // 空或 "HarmonyOS Sans SC" 使用内置字体，其余为系统字体名
+    "fontFamily": "",    // 空表示跟随系统默认字体，其余为系统已安装的字体名
     "fontSizePixels": 13,// 11-16（WPF DIP）
     "fontWeight": 1      // 0=Light 1=Regular 2=Medium 3=Bold 4=Black
   },
@@ -166,7 +166,7 @@ GET https://{ApiHost}/weather/v1/daily/{lat}/{lon}?localTime=true&lang=zh&days=3
 
 ### 字体与高分屏
 
-内置 `HarmonyOS Sans SC` 五档字重通过 `FontService` 以双参数 `new FontFamily(new Uri("pack://application:,,,/"), "./Assets/Fonts/#HarmonyOS Sans SC")` 加载（WPF 单参数 `FontFamily(string)` 不解析 `pack://` URI，会静默回退到系统默认字体），写入 `Application.Resources["AppFont"]` 供界面通过 `DynamicResource` 实时切换；应用清单声明 `PerMonitorV2` DPI 感知，字号直接使用 WPF DIP 由系统按显示器缩放高清光栅化。
+字体由 `FontService` 统一管理：默认跟随 `SystemFonts.MessageFontFamily`，也可在设置中枚举并切换系统已安装的任意字体、字号与正文字重，写入 `Application.Resources["AppFont" / "AppFontSize" / "AppFontWeight"]` 供界面通过 `DynamicResource` 实时刷新；应用清单声明 `PerMonitorV2` DPI 感知，字号直接使用 WPF DIP 由系统按显示器缩放高清光栅化。
 
 ### 前台窗口追踪
 
@@ -191,7 +191,7 @@ GET https://{ApiHost}/weather/v1/daily/{lat}/{lon}?localTime=true&lang=zh&days=3
 
 ```
 MyTopBar/
-├── Assets/          字体与矢量图标
+├── Assets/          应用图标与矢量图标
 ├── Infrastructure/  AppBarController、日志、路径、Win32 P/Invoke
 ├── Models/          数据模型与配置结构
 ├── Services/        前台窗口、音频、电源、系统指标、主题、字体、配置、媒体会话
@@ -219,9 +219,8 @@ docs/                README 截图
 
 特别感谢 [TwilightLemon/FluentWpfCore](https://github.com/TwilightLemon/FluentWpfCore) 提供了稳定、顺手的 WPF 亚克力合成与窗口材质封装。
 
-### 字体、图标与数据服务
+### 图标与数据服务
 
-- **字体**：[HarmonyOS Sans SC](https://developer.harmonyos.com/cn/design/resource/fonts/)，由华为发布，采用 HarmonyOS Sans Fonts License：可免费用于商业与非商业项目、可随应用内嵌分发，但不得单独售卖字体本身，需保留版权与许可声明。本项目内嵌于 `MyTopBar/Assets/Fonts/`，含五个字重，版权归华为所有。
 - **矢量图标**：天气与系统指标彩色矢量图标源自 [iconfont 阿里巴巴矢量图标库](https://www.iconfont.cn/)，转换为 WPF `DrawingImage` 资源内嵌使用。
 - **天气数据**：[和风天气（QWeather）](https://dev.qweather.com/)，提供实时天气、逐日预报与城市搜索（GeoAPI）。
 - **歌词数据**：[LRCLIB](https://lrclib.net/)，作为同步歌词查询的开放歌词库回退来源。

@@ -12,7 +12,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\Fonts\*.ttf" />
     <Resource Include="Assets\Icons\app.ico" />
   </ItemGroup>
 
